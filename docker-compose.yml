@@ -1,0 +1,20 @@
+# Amintiri server — Synology DSM 7 (Container Manager → Project → Create → paste this file).
+services:
+  amintiri:
+    image: ghcr.io/costygsm/amintiri-server:latest
+    container_name: amintiri
+    # host network: the server talks to DSM on 127.0.0.1:5000 to check passwords
+    network_mode: host
+    # root inside the container only to save uploaded photos as their owner (chown)
+    user: root
+    environment:
+      POZE_HOMES_ROOT: /volume1/homes      # where DSM keeps user home folders
+      POZE_PORT: 8090                      # point the DSM reverse proxy here
+      POZE_DSM_URL: http://127.0.0.1:5000  # DSM's own HTTP port, local only
+      TZ: Europe/Bucharest                 # for photos whose EXIF has no time zone
+    volumes:
+      - /volume1/homes:/volume1/homes
+      - /etc/passwd:/etc/passwd:ro         # to map DSM user names to file owners
+      - ./data:/data                       # database, thumbnails, daily database backups
+    restart: unless-stopped
+    mem_limit: 2g

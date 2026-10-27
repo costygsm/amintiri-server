@@ -1,0 +1,103 @@
+"""Cronologia, miniaturile și originalele."""
+import logging
+import re
+import sqlite3
+from datetime import date
+from typing import Literal
+
+from fastapi import APIRouter, Depends, Query
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse, Response
+
+from . import memories, thumbs, trash
+from .auth import ApiError, current_user, get_db
+from .db import asset_json
+from .users import safe_path
+
+log = logging.getLogger(__name__)
+router = APIRouter()
+
+_CURSOR_RE = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\|(\d+)$")
+NOT_FOUND = "Poza nu există."
+
+# un rând pe amprentă: copiile vechi (MobileBackup, …_Conflict) apar o singură dată
+_TIMELINE = """
+WITH u AS (
+  SELECT *, ROW_NUMBER() OVER (PARTITION BY sha256 ORDER BY id) AS rn
+  FROM assets WHERE user=? AND deleted_at IS NULL)
+SELECT * FROM u WHERE rn=1 AND (? IS NULL OR (taken_at, id) < (?, ?)) {extra}
+ORDER BY taken_at DESC, id DESC LIMIT ?
+"""
+
+
+def paged(conn, user: str, before: str | None, limit: int, extra: str = "", params: tuple = ()) -> dict:
+    """O pagină din cronologie, cea mai nouă prima; [extra] filtrează (loc, album)."""
+    taken = aid = None
+    if before is not None:
+        m = _CURSOR_RE.match(before)
+        if not m:
+            raise ApiError(422, "Cerere invalidă.")
+        taken, aid = m.group(1), int(m.group(2))
+    rows = conn.execute(_TIMELINE.format(extra=extra), (user, taken, taken, aid, *params, limit)).fetchall()
+    nxt = f"{rows[-1]['taken_at']}|{rows[-1]['id']}" if len(rows) == limit else None
+    return {"items": [asset_json(r) for r in rows], "next": nxt}
+
+
+def own_asset(conn, user: str, asset_id: int):
+    row = conn.execute("SELECT * FROM assets WHERE id=? AND user=? AND deleted_at IS NULL",
+                       (asset_id, user)).fetchone()
+    if row is None:
+        raise ApiError(404, NOT_FOUND)
+    return row
+
+
+@router.get("/api/assets")
+def timeline(before: str | None = None, limit: int = Query(200, ge=1, le=500),
+             kind: Literal["photo", "video"] | None = None,
+             user: str = Depends(current_user), conn: sqlite3.Connection = Depends(get_db)):
+    """[kind] = doar poze sau doar clipuri, ca filtrul „Clipuri” din Google Photos."""
+    if kind:
+        return paged(conn, user, before, limit, "AND kind=?", (kind,))
+    return paged(conn, user, before, limit)
+
+
+@router.get("/api/assets/{asset_id}/thumb")
+async def thumb(asset_id: int, size: int = 256, user: str = Depends(current_user),
+                conn: sqlite3.Connection = Depends(get_db)):
+    if size not in thumbs.SIZES:
+        raise ApiError(422, "Cerere invalidă.")
+    row = await run_in_threadpool(own_asset, conn, user, asset_id)
+    try:
+        path = await run_in_threadpool(thumbs.thumbnail, row, size)
+    except Exception as e:
+        log.warning("miniatură %s: %s", asset_id, e)
+        raise ApiError(404, "Miniatura nu se poate face.")
+    return FileResponse(path, media_type="image/jpeg",
+                        headers={"Cache-Control": "private, max-age=31536000"})
+
+
+@router.get("/api/assets/{asset_id}/original")
+def original(asset_id: int, user: str = Depends(current_user), conn: sqlite3.Connection = Depends(get_db)):
+    row = own_asset(conn, user, asset_id)
+    try:
+        path = safe_path(user, row["relpath"])
+    except ValueError:
+        raise ApiError(404, NOT_FOUND)
+    if not path.is_file():
+        raise ApiError(404, NOT_FOUND)
+    return FileResponse(path)
+
+
+@router.get("/api/memories")
+def on_this_day(day: date = Query(alias="date"), user: str = Depends(current_user),
+                conn: sqlite3.Connection = Depends(get_db)):
+    return {"years": memories.on_this_day(conn, user, day)}
+
+
+@router.delete("/api/assets/{asset_id}", status_code=204)
+def delete(asset_id: int, user: str = Depends(current_user), conn: sqlite3.Connection = Depends(get_db)):
+    try:
+        trash.move_to_trash(conn, user, asset_id)
+    except KeyError:
+        raise ApiError(404, NOT_FOUND)
+    return Response(status_code=204)
