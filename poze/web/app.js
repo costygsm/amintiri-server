@@ -47,6 +47,12 @@ function getGroup() { return getPref('grupare', GROUPS, 'luna'); }
 function setGroup(g) { setPref('grupare', g); }
 
 const ICONS = {
+  photo: 'M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z',
+  place: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z',
+  video: 'M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z',
+  all: 'M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z',
+  cloud: 'M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z',
+  logout: 'M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z',
   upload: 'M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z',
   eye: 'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
   eyeOff: 'M12 7a5 5 0 0 1 5 5c0 .65-.13 1.26-.36 1.83l2.92 2.92A11.8 11.8 0 0 0 23 12c-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46A11.8 11.8 0 0 0 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55A2.8 2.8 0 0 0 9 12a3 3 0 0 0 3 3c.22 0 .44-.03.65-.08l1.55 1.55A5 5 0 0 1 7.53 9.8zm4.31-.78 3.15 3.15.02-.16a3 3 0 0 0-3-3l-.17.01z',
@@ -278,52 +284,97 @@ let selectionCleanup = null;  // bara „N alese” a grilei de pe ecranul curen
 
 function startApp() {
   main = h('main', { id: 'continut' });
-  navLinks = {
-    poze: h('a', { href: '#/' }, tr('Poze', 'Photos')),
-    albume: h('a', { href: '#/albume' }, tr('Albume', 'Albums')),
-    locuri: h('a', { href: '#/locuri' }, tr('Locuri', 'Places')),
-  };
+  const sections = [['poze', '#/', tr('Poze', 'Photos'), 'photo'], ['albume', '#/albume', tr('Albume', 'Albums'), 'album'],
+    ['locuri', '#/locuri', tr('Locuri', 'Places'), 'place']];
+  // aceeași secțiune apare de două ori: în antet (telefon) și în bara din stânga (calculator)
+  navLinks = Object.fromEntries(sections.map(([k, href, name, ic]) =>
+    [k, [h('a', { href }, name), h('a', { href, class: 'side-link' }, icon(ic), h('span', {}, name))]]));
   const picker = h('input', {
     type: 'file', multiple: true, accept: 'image/*,video/*,.heic,.heif,.dng', class: 'hidden',
     onchange() { uploads.add([...picker.files]); picker.value = ''; },
   });
   let menu = null;
+  const signOut = async () => {
+    try { await api('/api/logout', { method: 'POST' }); } catch { /* deja ieșit */ }
+    showLogin();
+  };
+  // spațiul: cât ocupă pozele tale și cât mai e liber pe NAS (o bară, ca la Google)
+  const storage = h('div', { class: 'storage', hidden: true });
+  api('/api/stats').then((r) => {
+    if (r.total_bytes == null) return;
+    const used = r.total_bytes - r.free_bytes;
+    const bar = h('div', { class: 'meter' }, h('i'), h('b'));
+    bar.firstChild.style.width = `${Math.max(1, (used / r.total_bytes) * 100)}%`;
+    bar.lastChild.style.width = `${Math.max(0.5, (r.bytes / r.total_bytes) * 100)}%`;
+    storage.replaceChildren(
+      h('div', { class: 'storage-title' }, icon('cloud'), tr('Spațiu pe NAS', 'NAS storage')), bar,
+      h('div', { class: 'storage-text' }, `${tr('Pozele tale', 'Your photos')}: ${gb(r.bytes)}`),
+      h('div', { class: 'storage-text' }, `${tr('Liber', 'Free')}: ${gb(r.free_bytes)} ${tr('din', 'of')} ${gb(r.total_bytes)}`));
+    storage.hidden = false;
+  }).catch(() => {});
   let apk = null;  // ultimul APK publicat, pentru telefoanele care încă n-au aplicația
   api('/api/app/latest').then((r) => { apk = r; }).catch(() => {});
+  function toggleMenu(e, fromSide) {
+    e.stopPropagation();
+    if (menu) { menu.remove(); menu = null; return; }
+    menu = h('div', { class: `menu${fromSide ? ' from-side' : ''}`, role: 'menu' },
+      h('div', { class: 'who' }, `${tr('Conectat ca', 'Signed in as')} ${state.user}`),
+      apk && h('a', { class: 'btn text', role: 'menuitem', href: apk.url, download: 'amintiri.apk' },
+        icon('download'), `${tr('Aplicația Android', 'Android app')} ${apk.version_name}`),
+      h('div', { class: 'langs', role: 'group', 'aria-label': tr('Limba', 'Language') },
+        icon('language'),
+        Object.entries(LANG_CHOICES).map(([k, name]) => h('button', {
+          class: 'btn text', type: 'button', role: 'menuitemradio', 'aria-checked': String(langChoice() === k),
+          onclick: () => setLang(k),
+        }, name || tr('Automat', 'Automatic')))),
+      storage.hidden || fromSide ? null : storage.cloneNode(true),  // în bara din stânga se vede deja
+      h('button', { class: 'btn text', role: 'menuitem', type: 'button', onclick: signOut }, tr('Ieși din cont', 'Sign out')),
+      h('div', { class: 'who copy' }, COPYRIGHT, h('br'),
+        h('a', { href: 'mailto:office@servicegsm.eu?subject=Amintiri' }, 'office@servicegsm.eu')));
+    document.body.append(menu);
+    document.addEventListener('click', () => { menu?.remove(); menu = null; }, { once: true });
+  }
   const avatar = h('button', {
     class: 'avatar', type: 'button', 'aria-label': tr('Contul tău', 'Your account'), 'aria-haspopup': 'true',
-    onclick(e) {
-      e.stopPropagation();
-      if (menu) { menu.remove(); menu = null; return; }
-      menu = h('div', { class: 'menu', role: 'menu' },
-        h('div', { class: 'who' }, `${tr('Conectat ca', 'Signed in as')} ${state.user}`),
-        apk && h('a', { class: 'btn text', role: 'menuitem', href: apk.url, download: 'amintiri.apk' },
-          icon('download'), `${tr('Aplicația Android', 'Android app')} ${apk.version_name}`),
-        h('div', { class: 'langs', role: 'group', 'aria-label': tr('Limba', 'Language') },
-          icon('language'),
-          Object.entries(LANG_CHOICES).map(([k, name]) => h('button', {
-            class: 'btn text', type: 'button', role: 'menuitemradio', 'aria-checked': String(langChoice() === k),
-            onclick: () => setLang(k),
-          }, name || tr('Automat', 'Automatic')))),
-        h('button', { class: 'btn text', role: 'menuitem', type: 'button', async onclick() {
-          try { await api('/api/logout', { method: 'POST' }); } catch { /* deja ieșit */ }
-          showLogin();
-        } }, tr('Ieși din cont', 'Sign out')),
-        h('div', { class: 'who copy' }, COPYRIGHT, h('br'),
-          h('a', { href: 'mailto:office@servicegsm.eu?subject=Amintiri' }, 'office@servicegsm.eu')));
-      document.body.append(menu);
-      document.addEventListener('click', () => { menu?.remove(); menu = null; }, { once: true });
-    },
+    onclick: (e) => toggleMenu(e, false),
   }, (state.user || '?')[0].toUpperCase());
   const header = h('header', { class: 'top' },
     h('a', { class: 'brand', href: '#/', 'aria-label': tr('Amintiri, acasă', 'Amintiri, home') }, h('img', { src: 'icon.svg', alt: '' }), h('span', {}, 'Amintiri')),
-    h('nav', { class: 'tabs', 'aria-label': tr('Secțiuni', 'Sections') }, Object.values(navLinks)),
+    h('nav', { class: 'tabs', 'aria-label': tr('Secțiuni', 'Sections') }, Object.values(navLinks).map((l) => l[0])),
     h('a', { class: 'icon-btn', href: '#/cauta', 'aria-label': tr('Caută', 'Search'), title: tr('Caută', 'Search') }, icon('search')),
     h('button', { class: 'btn', type: 'button', onclick: () => picker.click() }, icon('upload'), h('span', {}, tr('Încarcă', 'Upload'))),
     avatar, picker,
   );
-  $app().replaceChildren(header, main);
+  // bara din stânga, pe calculator: secțiunile, încărcarea, filtrul, spațiul și contul jos
+  kindButtons = Object.entries(KINDS).map(([k, name]) => h('button', {
+    type: 'button', role: 'radio', class: 'side-link', 'data-kind': k,
+    onclick() {
+      setPref('tip', k);
+      if ((location.hash || '#/') === '#/') route(); else location.hash = '#/';
+    },
+  }, icon({ '': 'all', photo: 'photo', video: 'video' }[k]), h('span', {}, name)));
+  const side = h('aside', { class: 'side', 'aria-label': tr('Meniu', 'Menu') },
+    h('nav', { 'aria-label': tr('Secțiuni', 'Sections') }, Object.values(navLinks).map((l) => l[1])),
+    h('button', { class: 'btn side-upload', type: 'button', onclick: () => picker.click() }, icon('upload'), tr('Încarcă', 'Upload')),
+    h('div', { class: 'side-group', role: 'radiogroup', 'aria-label': tr('Arată', 'Show') },
+      h('div', { class: 'side-label' }, tr('Arată', 'Show')), kindButtons),
+    h('div', { class: 'side-fill' }),
+    storage,
+    h('div', { class: 'side-account' },
+      h('button', { class: 'side-me', type: 'button', 'aria-haspopup': 'true', 'aria-label': tr('Contul tău: limba, aplicația Android', 'Your account: language, Android app'),
+        onclick: (e) => toggleMenu(e, true) },
+        h('span', { class: 'avatar small', 'aria-hidden': 'true' }, (state.user || '?')[0].toUpperCase()),
+        h('span', { class: 'side-who' }, h('small', {}, tr('Conectat ca', 'Signed in as')), h('strong', {}, state.user))),
+      iconBtn('logout', tr('Ieși din cont', 'Sign out'), signOut)),
+    h('div', { class: 'side-copy' }, COPYRIGHT));
+  $app().replaceChildren(header, side, main);
   route();
+}
+let kindButtons = [];
+function gb(b) {
+  const v = b >= 1e12 ? [b / 1e12, 'TB'] : b >= 1e9 ? [b / 1e9, 'GB'] : [Math.max(0.1, b / 1e6), 'MB'];
+  const n = v[0].toFixed(v[0] >= 100 ? 0 : 1);
+  return `${LANG === 'ro' ? n.replace('.', ',') : n} ${v[1]}`;
 }
 
 function route() {
@@ -332,10 +383,12 @@ function route() {
   for (const r of ROUTES) {
     const m = hash.match(r.re);
     if (m) {
-      for (const [k, a] of Object.entries(navLinks)) {
+      for (const [k, links] of Object.entries(navLinks)) for (const a of links) {
         if (k === r.tab) a.setAttribute('aria-current', 'page');
         else a.removeAttribute('aria-current');
       }
+      const kind = getPref('tip', KINDS, '');
+      for (const b of kindButtons) b.setAttribute('aria-checked', String(r.tab === 'poze' && b.dataset.kind === kind));
       const token = ++renderToken;
       selectionCleanup?.(); selectionCleanup = null;
       main.replaceChildren();
@@ -357,18 +410,28 @@ window.addEventListener('hashchange', route);
 
 // ---------- grila paginată ----------
 /** Desenează o cronologie paginată din [url]; grupează pe zile. Întoarce o funcție de reîmprospătare. */
-function photoFeed(container, url, token, { emptyText = tr('Nicio poză încă.', 'No photos yet.'), emptyHint = tr('Apasă „Încarcă” sau trage poze aici.', 'Press "Upload" or drop photos here.'), onItems, group = getGroup() } = {}) {
-  const items = [];
-  const tiles = [];
-  const selected = new Set();  // indici în items
+function photoFeed(container, url, token, { emptyText = tr('Nicio poză încă.', 'No photos yet.'), emptyHint = tr('Apasă „Încarcă” sau trage poze aici.', 'Press "Upload" or drop photos here.'), onItems, group = getGroup(), start = null } = {}) {
+  // [start] = cursor de unde pornește lista (saltul din bara cu anii); atunci se încarcă și în sus.
+  // Fiecare poză are un număr fix (seq): crește în jos, iar cele adăugate deasupra primesc numere negative,
+  // ca alegerea și vizualizatorul să nu se încurce când lista crește în sus.
+  const items = [];  // în ordinea de pe ecran: items[seq - minSeq]
+  const bySeq = new Map();  // seq → { a, tile, check }
+  let minSeq = 0, maxSeq = -1;
+  const selected = new Set();  // seq-uri
   let anchor = null;  // ultima poză aleasă, pentru Shift+clic
-  let next = undefined;
+  let next = start ?? undefined;
+  let prev = start ? start : null;
   let busy = false;
-  let lastDay = null;
-  let grid = null;
+  let lastDay = null, grid = null;  // ultima secțiune (jos)
+  let firstDay = null, firstGrid = null, firstSection = null;  // prima secțiune (sus)
   const sentinel = h('div', { class: 'sentinel' });
   const loading = h('div', { class: 'loading' }, tr('Se încarcă…', 'Loading…'));
+  const topSentinel = h('div', { class: 'sentinel' });
   container.append(sentinel, loading);
+  if (start) {
+    container.prepend(topSentinel);
+    container.style.overflowAnchor = 'none';  // ținem ecranul pe loc noi, la fel în toate browserele
+  }
 
   const lazy = new IntersectionObserver((entries) => {
     for (const e of entries) if (e.isIntersecting) {
@@ -378,48 +441,96 @@ function photoFeed(container, url, token, { emptyText = tr('Nicio poză încă.'
     }
   }, { rootMargin: '600px' });
 
+  const section = (a, g) => h('section', { class: 'day month', 'data-t': a.taken_at }, h('h3', {}, GROUPS[group].label(a.taken_at)), g);
   function add(batch) {
     for (const a of batch) {
-      const idx = items.length;
+      const seq = ++maxSeq;
       items.push(a);
       const key = a.taken_at.slice(0, GROUPS[group].len);
       if (key !== lastDay) {
         lastDay = key;
         grid = h('div', { class: `grid g-${group}` });
-        container.insertBefore(h('section', { class: 'day month' }, h('h3', {}, GROUPS[group].label(a.taken_at)), grid), sentinel);
+        const sec = section(a, grid);
+        container.insertBefore(sec, sentinel);
+        if (!firstSection) { firstSection = sec; firstDay = key; firstGrid = grid; }
       }
-      const img = h('img', { alt: '', 'data-src': thumb(a.id), decoding: 'async', onload() { this.classList.add('on'); } });
-      lazy.observe(img);
-      const what = a.kind === 'video' ? tr('Clip', 'Video') : tr('Poză', 'Photo');
-      const from = `${what} ${tr('din', 'from')} ${fullDate(a.taken_at)}`;
-      const check = h('button', {
-        class: 'check', type: 'button', role: 'checkbox', 'aria-checked': 'false', 'aria-label': `${tr('Alege', 'Select')}: ${from}`,
-        onclick(e) { select(idx, e.shiftKey); },
-      }, icon('check'));
-      let pressed = null;  // apăsare lungă pe telefon = alege
-      let longDone = false;
-      const open = h('button', {
-        class: 'open', type: 'button', 'aria-label': from,
-        onclick(e) {
-          if (longDone) { longDone = false; return; }
-          if (selected.size || e.shiftKey || e.ctrlKey || e.metaKey) select(idx, e.shiftKey);
-          else openViewer(items, idx, { onChange: refresh, thumbOf: (k) => tiles[k]?.tile.querySelector('img') });
-        },
-        onpointerdown(e) {
-          if (e.pointerType !== 'touch') return;
-          pressed = setTimeout(() => { longDone = true; select(idx, false); navigator.vibrate?.(20); }, 450);
-        },
-        onpointerup() { clearTimeout(pressed); },
-        onpointercancel() { clearTimeout(pressed); },
-        onpointermove() { clearTimeout(pressed); },
-        oncontextmenu(e) { if (e.pointerType === 'touch' || longDone) e.preventDefault(); },
-      }, img, a.kind === 'video' ? h('span', { class: 'badge' }, icon('play'), a.duration_ms ? duration(a.duration_ms) : '') : null);
-      const tile = h('div', { class: 'tile' }, open, check);
-      tiles.push({ tile, check });
-      grid.append(tile);
+      grid.append(makeTile(a, seq));
     }
     onItems?.(items);
   }
+  /** Pozele mai noi, deasupra; [batch] vine cea mai nouă prima, toate mai noi decât prima de pe ecran. */
+  function prepend(batch) {
+    const ref = firstSection;
+    const y0 = ref?.getBoundingClientRect().top;
+    for (const a of [...batch].reverse()) {
+      const seq = --minSeq;
+      items.unshift(a);
+      const key = a.taken_at.slice(0, GROUPS[group].len);
+      if (key !== firstDay) {
+        firstDay = key;
+        firstGrid = h('div', { class: `grid g-${group}` });
+        const sec = section(a, firstGrid);
+        container.insertBefore(sec, firstSection ?? sentinel);
+        firstSection = sec;
+        if (!lastDay) { lastDay = key; grid = firstGrid; }
+      } else {
+        firstSection.dataset.t = a.taken_at;
+      }
+      firstGrid.prepend(makeTile(a, seq));
+    }
+    // ce era pe ecran rămâne pe loc; pozele noi apar deasupra, de unde le vezi derulând în sus
+    if (ref) window.scrollBy(0, ref.getBoundingClientRect().top - y0);
+    onItems?.(items);
+  }
+  function makeTile(a, seq) {
+    const img = h('img', { alt: '', 'data-src': thumb(a.id), decoding: 'async', onload() { this.classList.add('on'); } });
+    lazy.observe(img);
+    const what = a.kind === 'video' ? tr('Clip', 'Video') : tr('Poză', 'Photo');
+    const from = `${what} ${tr('din', 'from')} ${fullDate(a.taken_at)}`;
+    const check = h('button', {
+      class: 'check', type: 'button', role: 'checkbox', 'aria-checked': 'false', 'aria-label': `${tr('Alege', 'Select')}: ${from}`,
+      onclick(e) { select(seq, e.shiftKey); },
+    }, icon('check'));
+    let pressed = null;  // apăsare lungă pe telefon = alege
+    let longDone = false;
+    const open = h('button', {
+      class: 'open', type: 'button', 'aria-label': from,
+      onclick(e) {
+        if (longDone) { longDone = false; return; }
+        if (selected.size || e.shiftKey || e.ctrlKey || e.metaKey) select(seq, e.shiftKey);
+        else openViewer(items, seq - minSeq, { onChange: refresh, thumbOf: (k) => bySeq.get(k + minSeq)?.tile.querySelector('img') });
+      },
+      onpointerdown(e) {
+        if (e.pointerType !== 'touch') return;
+        pressed = setTimeout(() => { longDone = true; select(seq, false); navigator.vibrate?.(20); }, 450);
+      },
+      onpointerup() { clearTimeout(pressed); },
+      onpointercancel() { clearTimeout(pressed); },
+      onpointermove() { clearTimeout(pressed); },
+      oncontextmenu(e) { if (e.pointerType === 'touch' || longDone) e.preventDefault(); },
+    }, img, a.kind === 'video' ? h('span', { class: 'badge' }, icon('play'), a.duration_ms ? duration(a.duration_ms) : '') : null);
+    const tile = h('div', { class: 'tile' }, open, check);
+    bySeq.set(seq, { a, tile, check });
+    return tile;
+  }
+
+  async function newer() {
+    if (busy || !prev || token !== renderToken) return;
+    busy = true;
+    try {
+      const sep = url.includes('?') ? '&' : '?';
+      const first = items[0];
+      const cursor = first ? `${first.taken_at}|${first.id}` : prev;
+      const page = await api(`${url}${sep}limit=200&after=${encodeURIComponent(cursor)}`);
+      if (token !== renderToken) return;
+      prepend(page.items);
+      prev = page.prev;
+      if (!prev) { topIo.disconnect(); topSentinel.remove(); }
+    } finally {
+      busy = false;
+    }
+  }
+  const topIo = new IntersectionObserver((e) => { if (e[0].isIntersecting) newer(); }, { rootMargin: '800px' });
 
   async function more() {
     if (busy || next === null || token !== renderToken) return;
@@ -428,8 +539,14 @@ function photoFeed(container, url, token, { emptyText = tr('Nicio poză încă.'
       const sep = url.includes('?') ? '&' : '?';
       const page = await api(`${url}${sep}limit=200${next ? `&before=${encodeURIComponent(next)}` : ''}`);
       if (token !== renderToken) return;
+      const firstPage = !items.length;
       add(page.items);
       next = page.next;
+      // după un salt: luna aleasă sus pe ecran, abia apoi pornim încărcarea în sus
+      if (start && firstPage) {
+        firstSection?.scrollIntoView({ block: 'start' });
+        requestAnimationFrame(() => topIo.observe(topSentinel));
+      }
       if (next === null) {
         loading.remove();
         io.disconnect();
@@ -444,26 +561,28 @@ function photoFeed(container, url, token, { emptyText = tr('Nicio poză încă.'
   const io = new IntersectionObserver((e) => { if (e[0].isIntersecting) more(); }, { rootMargin: '1200px' });
   io.observe(sentinel);
 
-  function select(idx, range) {
-    const on = !selected.has(idx);
-    const span = range && anchor !== null ? [Math.min(anchor, idx), Math.max(anchor, idx)] : [idx, idx];
+  function select(seq, range) {
+    const on = !selected.has(seq);
+    const span = range && anchor !== null ? [Math.min(anchor, seq), Math.max(anchor, seq)] : [seq, seq];
     for (let k = span[0]; k <= span[1]; k++) {
+      const t = bySeq.get(k);
+      if (!t) continue;
       if (on) selected.add(k); else selected.delete(k);
-      tiles[k].tile.classList.toggle('picked', on);
-      tiles[k].check.setAttribute('aria-checked', String(on));
+      t.tile.classList.toggle('picked', on);
+      t.check.setAttribute('aria-checked', String(on));
     }
-    anchor = idx;
+    anchor = seq;
     showBar();
   }
   function clear() {
-    for (const k of selected) { tiles[k].tile.classList.remove('picked'); tiles[k].check.setAttribute('aria-checked', 'false'); }
+    for (const k of selected) { const t = bySeq.get(k); t.tile.classList.remove('picked'); t.check.setAttribute('aria-checked', 'false'); }
     selected.clear();
     anchor = null;
     showBar();
   }
   const count = h('strong', {});
   const inAlbum = location.hash.startsWith('#/album/') ? viewerAlbum : null;
-  const picked = () => [...selected].sort((x, y) => x - y).map((k) => items[k]);
+  const picked = () => [...selected].sort((x, y) => x - y).map((k) => bySeq.get(k).a);
   const bar = h('div', { class: 'selbar', role: 'toolbar', 'aria-label': tr('Pozele alese', 'Selected photos') },
     iconBtn('close', tr('Renunță (Esc)', 'Cancel (Esc)'), clear), count, h('span', { class: 'spacer' }),
     iconBtn('addAlbum', tr('Adaugă în album', 'Add to album'), async () => { if (await pickAlbum(picked().map((a) => a.sha256))) clear(); }),
@@ -543,21 +662,122 @@ async function renderTimeline(token) {
   }).catch(() => {});
   const group = getGroup();
   const kind = getPref('tip', KINDS, '');
-  const seg = (label, choices, current, pick) => h('div', { class: 'seg', role: 'radiogroup', 'aria-label': label },
+  const seg = (label, choices, current, pick, cls = '') => h('div', { class: `seg ${cls}`, role: 'radiogroup', 'aria-label': label },
     Object.entries(choices).map(([k, name]) => h('button', {
       type: 'button', role: 'radio', 'aria-checked': String(k === current),
       onclick() { if (k !== current) { pick(k); route(); } },
     }, name)));
   main.append(h('div', { class: 'toolbar' },
-    seg(tr('Arată', 'Show'), KINDS, kind, (k) => setPref('tip', k)),
+    seg(tr('Arată', 'Show'), KINDS, kind, (k) => setPref('tip', k), 'kind'),
     seg(tr('Grupează pozele pe', 'Group photos by'), Object.fromEntries(Object.entries(GROUPS).map(([g, v]) => [g, v.name])), group, setGroup)));
   const feed = h('div');
   main.append(feed);
+  const start = timelineJump;
+  timelineJump = null;
   photoFeed(feed, kind ? `/api/assets?kind=${kind}` : '/api/assets', token, {
-    group,
+    group, start: start && monthCursor(start),
     emptyText: kind === 'video' ? tr('Niciun clip încă.', 'No videos yet.') : tr('Nicio poză încă.', 'No photos yet.'),
   });
+  yearRail(token, feed, kind);
 }
+
+// ---------- bara cu anii (dreapta, pe calculator) ----------
+let timelineJump = null;  // luna „2016-03” aleasă din bară; renderTimeline pornește de acolo
+/** Cursorul care începe lista cu cea mai nouă poză din luna [m]: tot ce e înainte de luna următoare. */
+function monthCursor(m) {
+  let [y, mo] = m.split('-').map(Number);
+  if (++mo > 12) { mo = 1; y++; }
+  return `${y}-${String(mo).padStart(2, '0')}-01 00:00:00|0`;
+}
+/**
+ * Ca în Google Photos: anii pe marginea din dreapta, așezați după câte poze are fiecare.
+ * La trecerea mouse-ului arată luna de sub cursor; clic = sari acolo. Doar cu mouse (hover).
+ */
+async function yearRail(token, feed, kind) {
+  if (!matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+  const { months } = await api(`/api/assets/months${kind ? `?kind=${kind}` : ''}`);
+  if (token !== renderToken || months.length < 2) return;
+  const total = months.reduce((n, m) => n + m.count, 0);
+  let acc = 0;
+  const spans = months.map((m) => { const top = acc / total; acc += m.count; return { ...m, top, bottom: acc / total }; });
+  const at = (f) => spans.find((m) => f < m.bottom) ?? spans[spans.length - 1];
+  const tip = h('div', { class: 'rail-tip' });
+  const marker = h('div', { class: 'rail-marker' });
+  const years = h('div', { class: 'rail-years' });
+  const rail = h('nav', { class: 'rail', 'aria-label': tr('Sari la un an', 'Jump to a year') }, years, marker, tip);
+  // un an = prima lui lună (cea mai nouă); etichetele prea apropiate se sar
+  function drawYears() {
+    years.replaceChildren();
+    const hgt = rail.clientHeight;
+    let last = -99;
+    for (const m of spans) {
+      const y = m.month.slice(0, 4);
+      if (m !== spans.find((x) => x.month.startsWith(y))) continue;
+      const px = m.top * hgt;
+      if (px - last < 22) continue;
+      last = px;
+      const b = h('button', { type: 'button', onclick: () => jump(m.month) }, y);
+      b.style.top = `${px}px`;  // CSP-ul nu lasă atributul style, dar lasă CSSOM
+      years.append(b);
+    }
+  }
+  function jump(month) {
+    // deja încărcată? doar derulăm până la ea
+    const secs = [...feed.querySelectorAll('section.day')];
+    const ms = month + '-99';
+    const hit = secs.find((sec) => sec.dataset.t <= ms);
+    const loaded = secs.length && hit && secs[secs.length - 1].dataset.t.slice(0, 7) <= month && secs[0].dataset.t.slice(0, 7) >= month;
+    if (loaded) { hit.scrollIntoView({ block: 'start', behavior: calm() ? 'auto' : 'smooth' }); return; }
+    timelineJump = month;
+    route();
+  }
+  rail.addEventListener('pointermove', (e) => {
+    const r = rail.getBoundingClientRect();
+    const f = Math.min(Math.max((e.clientY - r.top) / r.height, 0), 0.9999);
+    tip.textContent = monthLabel(`${at(f).month}-01`);
+    tip.style.top = `${e.clientY - r.top}px`;
+    rail.classList.add('hover');
+  });
+  rail.addEventListener('pointerleave', () => rail.classList.remove('hover'));
+  rail.addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;
+    const r = rail.getBoundingClientRect();
+    jump(at(Math.min(Math.max((e.clientY - r.top) / r.height, 0), 0.9999)).month);
+  });
+  // unde ești acum: prima secțiune care încă se vede sub antet
+  let raf = 0;
+  function place() {
+    raf = 0;
+    const sec = [...feed.querySelectorAll('section.day')].find((x) => x.getBoundingClientRect().bottom > 80);
+    if (!sec) return;
+    const m = spans.find((x) => x.month === sec.dataset.t.slice(0, 7));
+    if (m) marker.style.top = `${m.top * rail.clientHeight}px`;
+  }
+  const onScroll = () => { if (!raf) raf = requestAnimationFrame(place); };
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', drawYears);
+  document.body.append(rail);
+  document.body.classList.add('has-rail');
+  drawYears();
+  place();
+  const prevCleanup = selectionCleanup;
+  selectionCleanup = () => {
+    prevCleanup?.();
+    rail.remove();
+    document.body.classList.remove('has-rail');
+    removeEventListener('scroll', onScroll);
+    removeEventListener('resize', drawYears);
+  };
+}
+
+// lumina care urmează mouse-ul pe poze (o singură ascultare pentru toată pagina)
+document.addEventListener('pointermove', (e) => {
+  const o = e.target.closest?.('.tile .open');
+  if (!o) return;
+  const r = o.getBoundingClientRect();
+  o.style.setProperty('--mx', `${e.clientX - r.left}px`);
+  o.style.setProperty('--my', `${e.clientY - r.top}px`);
+}, { passive: true });
 
 async function renderSearch(token, q = '') {
   q = decodeURIComponent(q).trim();

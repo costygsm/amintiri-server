@@ -27,7 +27,30 @@ def test_groups_by_year(env):
     res = on_this_day(conn, "ana", date(2026, 10, 26))
     assert years(res) == [1, 3]
     assert [y["year"] for y in res] == [2025, 2023]
-    assert len(res[0]["items"]) == 1 and res[0]["items"][0]["taken_at"] == "2025-10-26 10:00:00"
+    assert [i["taken_at"] for i in res[0]["items"]] == ["2025-10-26 10:00:00", "2025-10-27 10:00:00"]
+
+
+def test_window_three_days(env):
+    # ca Google Photos: anii fără poză fix în ziua asta apar cu pozele din jur (±3 zile), nu mai departe
+    conn = db.connect(env["data"])
+    add(conn, "2024-10-23 10:00:00")  # -3: intră
+    add(conn, "2022-10-29 23:59:00")  # +3: intră
+    add(conn, "2021-10-22 10:00:00")  # -4: nu
+    add(conn, "2020-10-30 00:00:00")  # +4: nu
+    assert [y["year"] for y in on_this_day(conn, "ana", date(2026, 10, 26))] == [2024, 2022]
+
+
+def test_new_year_boundary(env):
+    conn = db.connect(env["data"])
+    add(conn, "2025-12-30 10:00:00")  # acum 3 zile: nu e amintire
+    add(conn, "2024-12-31 10:00:00")  # în fereastra lui 2 ianuarie 2025: acum 1 an
+    add(conn, "2025-01-04 10:00:00")
+    res = on_this_day(conn, "ana", date(2026, 1, 2))
+    assert [(y["year"], y["years_ago"], len(y["items"])) for y in res] == [(2025, 1, 2)]
+
+
+def test_empty_library(env):
+    assert on_this_day(db.connect(env["data"]), "ana", date(2026, 10, 26)) == []
 
 
 def test_excludes_screenshots(env):
@@ -63,7 +86,8 @@ def test_feb29_on_feb28(env):
     conn = db.connect(env["data"])
     add(conn, "2024-02-29 10:00:00")
     assert years(on_this_day(conn, "ana", date(2025, 2, 28))) == [1]
-    assert on_this_day(conn, "ana", date(2028, 2, 28)) == []  # 2028 e bisect: apare pe 29
+    assert years(on_this_day(conn, "ana", date(2028, 2, 28))) == [4]  # în fereastra de ±3 zile
+    assert years(on_this_day(conn, "ana", date(2029, 3, 1))) == [5]
 
 
 def test_dedup_sha(env):

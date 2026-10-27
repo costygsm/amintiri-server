@@ -160,10 +160,11 @@ def create_app(start_indexer: bool = True) -> FastAPI:
         row = conn.execute("SELECT SUM(kind='photo'), SUM(kind='video'), COALESCE(SUM(size), 0) FROM assets "
                            "WHERE user=? AND deleted_at IS NULL", (user,)).fetchone()
         try:
-            free = shutil.disk_usage(users.photos_root(user).parent).free
+            disk = shutil.disk_usage(users.photos_root(user).parent)
+            free, total = disk.free, disk.total
         except OSError:
-            free = None
-        return {"photos": row[0] or 0, "videos": row[1] or 0, "bytes": row[2], "free_bytes": free}
+            free = total = None
+        return {"photos": row[0] or 0, "videos": row[1] or 0, "bytes": row[2], "free_bytes": free, "total_bytes": total}
 
     @app.get("/api/app/latest")
     def app_latest():

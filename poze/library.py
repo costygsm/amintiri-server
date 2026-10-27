@@ -28,16 +28,35 @@ WITH u AS (
 SELECT * FROM u WHERE rn=1 AND (? IS NULL OR (taken_at, id) < (?, ?)) {extra}
 ORDER BY taken_at DESC, id DESC LIMIT ?
 """
+# aceeași listă, în sus: pozele mai noi decât cursorul, după un salt din bara cu anii
+_NEWER = """
+WITH u AS (
+  SELECT *, ROW_NUMBER() OVER (PARTITION BY sha256 ORDER BY id) AS rn
+  FROM assets WHERE user=? AND deleted_at IS NULL)
+SELECT * FROM u WHERE rn=1 AND (taken_at, id) > (?, ?) {extra}
+ORDER BY taken_at, id LIMIT ?
+"""
 
 
-def paged(conn, user: str, before: str | None, limit: int, extra: str = "", params: tuple = ()) -> dict:
-    """O pagină din cronologie, cea mai nouă prima; [extra] filtrează (loc, album)."""
+def _cursor(c: str) -> tuple[str, int]:
+    m = _CURSOR_RE.match(c)
+    if not m:
+        raise ApiError(422, "Cerere invalidă.")
+    return m.group(1), int(m.group(2))
+
+
+def paged(conn, user: str, before: str | None, limit: int, extra: str = "", params: tuple = (),
+          after: str | None = None) -> dict:
+    """O pagină din cronologie, cea mai nouă prima; [extra] filtrează (loc, album).
+    Cu [after]: pozele imediat mai noi decât cursorul (tot cea mai nouă prima), iar „prev” continuă în sus."""
+    if after is not None:
+        taken, aid = _cursor(after)
+        rows = conn.execute(_NEWER.format(extra=extra), (user, taken, aid, *params, limit)).fetchall()
+        prev = f"{rows[-1]['taken_at']}|{rows[-1]['id']}" if len(rows) == limit else None
+        return {"items": [asset_json(r) for r in reversed(rows)], "prev": prev}
     taken = aid = None
     if before is not None:
-        m = _CURSOR_RE.match(before)
-        if not m:
-            raise ApiError(422, "Cerere invalidă.")
-        taken, aid = m.group(1), int(m.group(2))
+        taken, aid = _cursor(before)
     rows = conn.execute(_TIMELINE.format(extra=extra), (user, taken, taken, aid, *params, limit)).fetchall()
     nxt = f"{rows[-1]['taken_at']}|{rows[-1]['id']}" if len(rows) == limit else None
     return {"items": [asset_json(r) for r in rows], "next": nxt}
@@ -52,13 +71,25 @@ def own_asset(conn, user: str, asset_id: int):
 
 
 @router.get("/api/assets")
-def timeline(before: str | None = None, limit: int = Query(200, ge=1, le=500),
+def timeline(before: str | None = None, after: str | None = None, limit: int = Query(200, ge=1, le=500),
              kind: Literal["photo", "video"] | None = None,
              user: str = Depends(current_user), conn: sqlite3.Connection = Depends(get_db)):
     """[kind] = doar poze sau doar clipuri, ca filtrul „Clipuri” din Google Photos."""
     if kind:
-        return paged(conn, user, before, limit, "AND kind=?", (kind,))
-    return paged(conn, user, before, limit)
+        return paged(conn, user, before, limit, "AND kind=?", (kind,), after=after)
+    return paged(conn, user, before, limit, after=after)
+
+
+@router.get("/api/assets/months")
+def months(kind: Literal["photo", "video"] | None = None,
+           user: str = Depends(current_user), conn: sqlite3.Connection = Depends(get_db)):
+    """Câte poze are fiecare lună, cea mai nouă prima: din asta se desenează bara cu anii de pe web."""
+    rows = conn.execute(
+        "WITH u AS (SELECT taken_at, kind, ROW_NUMBER() OVER (PARTITION BY sha256 ORDER BY id) AS rn"
+        " FROM assets WHERE user=? AND deleted_at IS NULL)"
+        " SELECT substr(taken_at, 1, 7) AS m, count(*) AS n FROM u WHERE rn=1 AND (? IS NULL OR kind=?)"
+        " GROUP BY m ORDER BY m DESC", (user, kind, kind)).fetchall()
+    return {"months": [{"month": r["m"], "count": r["n"]} for r in rows]}
 
 
 @router.get("/api/assets/{asset_id}/thumb")

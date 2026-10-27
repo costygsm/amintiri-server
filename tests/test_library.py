@@ -69,6 +69,45 @@ def test_timeline_order_and_cursor(client, env):
     assert seen == sorted(seen, reverse=True)
 
 
+def _seed(conn, rows):
+    for i, (taken, sha, kind) in enumerate(rows):
+        conn.execute("insert into assets(user, relpath, sha256, size, mtime, taken_at, kind) values(?,?,?,?,?,?,?)",
+                     ("ana", f"f{i}.jpg", sha, 1, 0, taken, kind))
+    conn.commit()
+
+
+def test_after_walks_up_from_a_jump(client, env):
+    # după un salt din bara cu anii: în jos cu before, în sus cu after, fără găuri sau dubluri
+    conn = db.connect(env["data"])
+    _seed(conn, [(f"2020-{1 + i // 28:02}-{1 + i % 28:02} 10:00:00", f"{i:064x}", "photo") for i in range(300)])
+    h = headers(env)
+    start = "2020-06-01 00:00:00|0"
+    down = client.get("/api/assets", params={"before": start, "limit": 500}, headers=h).json()["items"]
+    up, cursor = [], start
+    while cursor:
+        page = client.get("/api/assets", params={"after": cursor, "limit": 40}, headers=h).json()
+        assert [it["taken_at"] for it in page["items"]] == sorted((it["taken_at"] for it in page["items"]), reverse=True)
+        up = page["items"] + up
+        cursor = page["prev"]
+        if cursor is None:
+            break
+        cursor = f"{page['items'][0]['taken_at']}|{page['items'][0]['id']}"
+    everything = up + down
+    assert len(everything) == 300 == len({it["id"] for it in everything})
+    assert [it["taken_at"] for it in everything] == sorted((it["taken_at"] for it in everything), reverse=True)
+
+
+def test_months_counts_one_per_sha(client, env):
+    conn = db.connect(env["data"])
+    _seed(conn, [("2024-05-01 10:00:00", "a" * 64, "photo"), ("2024-05-02 10:00:00", "a" * 64, "photo"),
+                 ("2024-05-03 10:00:00", "b" * 64, "video"), ("2023-12-31 23:00:00", "c" * 64, "photo")])
+    h = headers(env)
+    assert client.get("/api/assets/months", headers=h).json()["months"] == [
+        {"month": "2024-05", "count": 2}, {"month": "2023-12", "count": 1}]
+    assert client.get("/api/assets/months", params={"kind": "video"}, headers=h).json()["months"] == [
+        {"month": "2024-05", "count": 1}]
+
+
 def test_bad_cursor_422(client, env):
     r = client.get("/api/assets", params={"before": "nimic"}, headers=headers(env))
     assert r.status_code == 422

@@ -247,7 +247,7 @@ h2.title { font-size: 30px; font-weight: 750; margin: 24px 4px 14px; display: fl
 .selbar.busy button { pointer-events: none; opacity: .4; }
 .tile img.on { opacity: 1; transform: none; }
 @media (hover: hover) {
-  .tile:hover img.on { transform: scale(1.04); filter: brightness(.94); }
+  .tile:hover img.on { transform: scale(1.04); filter: brightness(1.06) saturate(1.08); }
 }
 .tile .badge {
   position: absolute; right: 6px; bottom: 6px; color: #fff; font-size: 12px; font-weight: 700;
@@ -409,6 +409,98 @@ dialog .list button:hover { background: var(--surface-2); }
 ::view-transition-group(foto) { animation-duration: 380ms; animation-timing-function: var(--ease-out); }
 ::view-transition-old(foto), ::view-transition-new(foto) { height: 100%; object-fit: cover; overflow: clip; }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 220ms; }
+
+/* bara din stânga (calculator): secțiuni, încărcare, filtru, spațiu, cont */
+.side { display: none; }
+@media (min-width: 1024px) {
+  .side {
+    position: fixed; left: 0; top: 65px; bottom: 0; width: 240px; z-index: 9; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 4px; padding: 12px 12px 12px;
+  }
+  main { margin-left: 240px; max-width: none; }
+  header.top nav.tabs { visibility: hidden; }
+  header.top > .btn, header.top > .avatar, .toolbar .seg.kind { display: none; }
+  .menu.from-side { left: 16px; right: auto; top: auto; bottom: 100px; position: fixed; transform-origin: bottom left; }
+}
+.side-link {
+  all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 14px; cursor: pointer;
+  height: 44px; padding: 0 16px; border-radius: 999px; color: var(--text); font-weight: 600; font-size: 15px;
+  transition: background-color var(--fast), color var(--fast);
+}
+.side-link .i { width: 22px; height: 22px; color: var(--muted); transition: color var(--fast); }
+.side-link:hover:not([aria-current]):not([aria-checked="true"]) { background: color-mix(in srgb, currentColor 7%, transparent); }
+.side-link:focus-visible { outline: 3px solid var(--primary); outline-offset: -3px; }
+.side-link[aria-current="page"], .side-link[aria-checked="true"] { background: var(--primary-soft); color: var(--on-primary-soft); }
+.side-link[aria-current="page"] .i, .side-link[aria-checked="true"] .i { color: var(--primary); }
+.side nav { display: flex; flex-direction: column; gap: 2px; }
+.side-upload { margin: 14px 4px 10px; height: 48px; justify-content: center; font-size: 15px; }
+.side-group { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, var(--line) 50%, transparent); }
+.side-group .side-link { height: 40px; font-size: 14px; }
+.side-label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 6px 16px; }
+.side-fill { flex: 1; min-height: 12px; }
+.storage { padding: 12px 16px; border-radius: 16px; background: var(--surface-2); font-size: 13px; color: var(--muted); }
+.storage-title { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+.storage-title .i { width: 20px; height: 20px; color: var(--primary); }
+/* bara: tot ce e ocupat pe NAS (deschis), iar peste ea partea pozelor tale (plin) */
+.meter { position: relative; height: 6px; border-radius: 6px; background: color-mix(in srgb, var(--line) 60%, transparent); overflow: hidden; margin-bottom: 8px; }
+.meter i, .meter b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; }
+.meter i { background: color-mix(in srgb, var(--primary) 35%, transparent); }
+.meter b { background: var(--primary); }
+.storage-text { line-height: 1.5; font-variant-numeric: tabular-nums; }
+.menu .storage { margin: 4px 0 6px; }
+.side-account { display: flex; align-items: center; gap: 4px; margin-top: 10px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--line) 50%, transparent); }
+.side-me { all: unset; flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 14px; cursor: pointer; }
+.side-me:hover { background: color-mix(in srgb, currentColor 7%, transparent); }
+.side-me:focus-visible { outline: 3px solid var(--primary); }
+.avatar.small { width: 34px; height: 34px; flex: none; font-size: 15px; }
+.side-who { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.side-who small { color: var(--muted); font-size: 12px; }
+.side-who strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-copy { font-size: 11px; color: var(--muted); padding: 8px 8px 0; opacity: .8; }
+
+/* după un salt din bara cu anii, secțiunea nu rămâne sub antet */
+.day { scroll-margin-top: 72px; }
+
+/* lumina de sub mouse pe fiecare poză: o pată albă moale care urmează cursorul */
+.tile .open { position: relative; }
+.tile .open::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; border-radius: inherit;
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgb(255 255 255 / .38), transparent 62%);
+  transition: opacity var(--mid) var(--ease-out);
+}
+@media (hover: hover) {
+  .tile:hover { box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 55%, transparent), 0 6px 20px color-mix(in srgb, var(--primary) 30%, transparent); z-index: 1; }
+  .tile:hover .open::after { opacity: 1; }
+  .tile { transition: box-shadow var(--mid) var(--ease-out), background-color var(--mid); }
+}
+
+/* bara cu anii, pe marginea din dreapta (doar cu mouse) */
+body.has-rail main { padding-right: 56px; }
+.rail {
+  position: fixed; right: 0; top: 80px; bottom: 24px; width: 56px; z-index: 20; cursor: pointer;
+}
+.rail-years button {
+  all: unset; position: absolute; right: 10px; translate: 0 -50%; cursor: pointer;
+  font-size: 12px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums;
+  padding: 2px 4px; border-radius: 6px; opacity: .55; transition: opacity var(--fast), color var(--fast), background-color var(--fast);
+}
+.rail:hover .rail-years button { opacity: 1; }
+.rail-years button:hover, .rail-years button:focus-visible { color: var(--primary); background: var(--primary-soft); opacity: 1; }
+.rail-marker {
+  position: absolute; right: 4px; width: 4px; height: 28px; border-radius: 4px; background: var(--primary);
+  translate: 0 -2px; transition: top var(--mid) var(--ease-out);
+}
+.rail-tip {
+  position: absolute; right: 60px; translate: 0 -50%; white-space: nowrap; pointer-events: none;
+  padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 650;
+  background: var(--primary); color: var(--on-primary); box-shadow: var(--shadow-sm);
+  opacity: 0; transition: opacity var(--fast);
+}
+.rail-tip::after {  /* linia până la bară */
+  content: ""; position: absolute; left: 100%; top: 50%; width: 56px; height: 2px; background: var(--primary); opacity: .6;
+}
+.rail.hover .rail-tip { opacity: 1; }
+@media (max-width: 700px) { .rail { display: none; } body.has-rail main { padding-right: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }

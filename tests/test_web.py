@@ -195,6 +195,7 @@ def test_stats_counts_own_live_assets(web, dsm, env):
     r = web.get("/api/stats").json()
     assert (r["photos"], r["videos"], r["bytes"]) == (1, 1, 400)
     assert r["free_bytes"] > 0
+    assert r["total_bytes"] >= r["free_bytes"]
 
 
 def test_timeline_filters_by_kind(web, dsm, env):
