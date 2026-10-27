@@ -28,7 +28,7 @@ def login(client, user="ana", password="pw", **extra):
 
 def test_health(client):
     r = client.get("/api/health")
-    assert r.json() == {"ok": True, "version": "0.3.3", "api": 1}
+    assert r.json() == {"ok": True, "version": "0.3.5", "api": 1}
 
 
 def test_login_ok_returns_token_and_logs_out_dsm(client, dsm):

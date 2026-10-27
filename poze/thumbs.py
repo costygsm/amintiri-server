@@ -1,4 +1,5 @@
 """Miniaturile JPEG, ținute în cache în `data_dir/thumbs`."""
+import logging
 import os
 import subprocess
 import tempfile
@@ -9,6 +10,8 @@ from PIL import Image, ImageOps
 from . import metadata  # noqa: F401  (înregistrează deschiderea HEIC)
 from .config import get_settings
 from .users import safe_path
+
+log = logging.getLogger(__name__)
 
 SIZES = (256, 1024)
 QUALITY = 82
@@ -49,3 +52,25 @@ def thumbnail(asset, size: int) -> Path:
             except FileNotFoundError:
                 pass
     return cache
+
+
+def warm(conn, size: int = 256, limit: int = 3000) -> int:
+    """Face miniaturile care lipsesc, cele mai noi poze întâi, ca derularea să nu le aștepte.
+    Cel mult `limit` pe tură, ca indexarea pozelor noi să nu aștepte ore la prima pornire.
+    Întoarce câte a făcut."""
+    made = tried = 0
+    root = get_settings().data_dir / "thumbs"
+    rows = conn.execute("SELECT * FROM assets WHERE deleted_at IS NULL ORDER BY taken_at DESC").fetchall()
+    for asset in rows:
+        if tried >= limit:  # și cele care nu se pot face consumă din tură
+            break
+        sha = asset["sha256"]
+        if (root / sha[:2] / f"{sha}_{size}.jpg").exists():
+            continue
+        tried += 1
+        try:
+            thumbnail(asset, size)
+            made += 1
+        except Exception as e:
+            log.warning("miniatură %s: %s", asset["id"], e)
+    return made

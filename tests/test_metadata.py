@@ -129,3 +129,24 @@ def test_video_camera_name_beats_creation_time(tmp_path):
     assert resolve_taken_at(wa, tmp_path / "VID-20231202-WA0001.mp4", None) == "2023-12-02 14:23:13"
     photo = MediaInfo("photo", "2023-12-02 14:23:13", 1, 1, None)
     assert resolve_taken_at(photo, tmp_path / "IMG_20231202_132313.jpg", None) == "2023-12-02 14:23:13"
+
+
+def test_rotated_photo_dims_as_shown(tmp_path):
+    from PIL import Image
+    exif = Image.Exif()
+    exif[0x0112] = 6
+    p = tmp_path / "rot.jpg"
+    Image.new("RGB", (400, 200)).save(p, "JPEG", exif=exif)
+    info = read_media_info(p)
+    assert (info.width, info.height) == (200, 400)
+
+
+@pytest.mark.parametrize("stream", [
+    {"tags": {"rotate": "90"}},
+    {"side_data_list": [{"side_data_type": "Display Matrix", "rotation": -90}]},
+])
+def test_rotated_video_dims_as_shown(tmp_path, monkeypatch, stream):
+    _fake_ffprobe(monkeypatch, {"format": {"duration": "1"},
+                                "streams": [{"codec_type": "video", "width": 1920, "height": 1080, **stream}]})
+    info = read_media_info(tmp_path / "v.mp4")
+    assert (info.width, info.height) == (1080, 1920)

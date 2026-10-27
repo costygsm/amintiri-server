@@ -8,9 +8,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from . import backup, db, geo, metadata, trash
+from . import backup, db, geo, metadata, thumbs, trash
 from .metadata import FMT, TZ
-from .users import photos_root
+from .users import photos_root, safe_path
 
 log = logging.getLogger(__name__)
 
@@ -180,6 +180,29 @@ def scan_all(conn, settings) -> None:
                 log.exception("indexare eșuată pentru %s", home.name)
 
 
+DIMS_VERSION = 1
+
+
+def fix_dims(conn) -> int:
+    """O singură dată: recitește lățimea/înălțimea, care nu țineau cont de rotire."""
+    row = conn.execute("SELECT value FROM meta WHERE key='dims_version'").fetchone()
+    if row and int(row[0]) == DIMS_VERSION:
+        return 0
+    rows = conn.execute("SELECT id, user, relpath, width, height FROM assets WHERE deleted_at IS NULL").fetchall()
+    changed = []
+    for r in rows:
+        try:
+            info = metadata.read_media_info(safe_path(r["user"], r["relpath"]))
+        except Exception:
+            continue
+        if info.width and (info.width, info.height) != (r["width"], r["height"]):
+            changed.append((info.width, info.height, r["id"]))
+    conn.executemany("UPDATE assets SET width=?, height=? WHERE id=?", changed)
+    conn.execute("INSERT OR REPLACE INTO meta(key, value) VALUES('dims_version', ?)", (str(DIMS_VERSION),))
+    conn.commit()
+    return len(changed)
+
+
 def start_background(settings) -> threading.Thread:
     def loop():
         try:
@@ -187,6 +210,11 @@ def start_background(settings) -> threading.Thread:
         except Exception:
             pass
         conn = db.connect(settings.data_dir)
+        try:
+            if n := fix_dims(conn):
+                log.info("dimensiuni corectate pentru %d poze", n)
+        except Exception:
+            log.exception("corectarea dimensiunilor a eșuat")
         try:
             if n := geo.relocate(conn):
                 log.info("locuri refăcute pentru %d poze", n)
@@ -205,6 +233,11 @@ def start_background(settings) -> threading.Thread:
                 backup.daily(conn, settings.data_dir)
             except Exception:
                 log.exception("copia bazei de date a eșuat")
+            try:
+                if n := thumbs.warm(conn):
+                    log.info("miniaturi făcute dinainte: %d", n)
+            except Exception:
+                log.exception("miniaturile dinainte au eșuat")
             time.sleep(INTERVAL)
 
     t = threading.Thread(target=loop, name="indexer", daemon=True)

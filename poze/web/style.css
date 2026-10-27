@@ -254,11 +254,18 @@ h2.title { font-size: 30px; font-weight: 750; margin: 24px 4px 14px; display: fl
   display: flex; align-items: center; gap: 2px; text-shadow: 0 1px 3px rgb(0 0 0 / .8);
 }
 .tile .badge svg { width: 18px; height: 18px; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .6)); }
-.grid.g-zi { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+/* Zile/Luni: rânduri de aceeași înălțime, fiecare poză cu forma ei; rândul se umple exact pe lățime
+   (creșterea e proporțională cu forma, deci toate cresc la fel în înălțime); ultimul rând nu se întinde.
+   Pe telefon rămân pătratele (ca la Google): pe lățimea îngustă multe poze ar sta singure pe rând. */
+@media (min-width: 601px) {
+  .grid.g-zi, .grid.g-luna { display: flex; flex-wrap: wrap; align-items: flex-start; --rh: 200px; }
+  .grid.g-zi { --rh: 250px; }
+  .grid.g-zi::after, .grid.g-luna::after { content: ''; flex-grow: 1000000; }
+  .grid.g-zi .tile, .grid.g-luna .tile { aspect-ratio: var(--r); flex: var(--r) 1 calc(var(--r) * var(--rh)); min-width: 0; }
+}
 .grid.g-an { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 2px; }
 .grid.g-an .tile { border-radius: 3px; }
 @media (max-width: 600px) {  /* după regulile de mai sus, altfel ele câștigă */
-  .grid.g-zi { grid-template-columns: repeat(2, 1fr); }
   .grid.g-an { grid-template-columns: repeat(5, 1fr); }
   .toolbar .seg button { padding: 6px 9px; font-size: 14px; }
   .toolbar { gap: 6px; }

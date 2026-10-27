@@ -209,3 +209,18 @@ def test_recycle_and_incoming_ignored(env, conn):
         make_jpeg(root / d / "z.jpg")
     make_jpeg(root / ".hidden.jpg")
     assert indexer.scan_user(conn, "ana") == ScanStats(0, 0, 0)
+
+
+def test_fix_dims_once(env):
+    from PIL import Image
+    exif = Image.Exif()
+    exif[0x0112] = 6
+    (env["homes"] / "ana/Photos").mkdir(parents=True, exist_ok=True)
+    Image.new("RGB", (400, 200)).save(env["homes"] / "ana/Photos/rot.jpg", "JPEG", exif=exif)
+    conn = db.connect(env["data"])
+    indexer.scan_user(conn, "ana")
+    conn.execute("UPDATE assets SET width=400, height=200")  # cum le scria versiunea veche
+    assert indexer.fix_dims(conn) == 1
+    assert tuple(conn.execute("SELECT width, height FROM assets").fetchone()) == (200, 400)
+    conn.execute("UPDATE assets SET width=400, height=200")
+    assert indexer.fix_dims(conn) == 0  # deja făcut

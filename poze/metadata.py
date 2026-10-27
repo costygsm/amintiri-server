@@ -61,6 +61,8 @@ def _image_info(path: Path, kind: str) -> MediaInfo:
         with Image.open(path) as img:
             width, height = img.size
             exif = img.getexif()
+            if exif.get(0x0112) in (5, 6, 7, 8):  # salvată culcată, afișată în picioare
+                width, height = height, width
             taken = None
             try:
                 taken = _exif_date(exif.get_ifd(0x8769).get(36867))
@@ -91,6 +93,13 @@ def _video_info(path: Path) -> MediaInfo:
     for s in data.get("streams", []):
         if s.get("codec_type") == "video":
             width, height = s.get("width"), s.get("height")
+            rot = s.get("tags", {}).get("rotate") or next(
+                (d.get("rotation") for d in s.get("side_data_list", []) if "rotation" in d), 0)
+            try:
+                if int(float(rot)) % 180:  # telefonul filmează culcat și notează rotirea
+                    width, height = height, width
+            except (TypeError, ValueError):
+                pass
             break
     duration_ms = None
     try:

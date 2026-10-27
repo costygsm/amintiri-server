@@ -191,3 +191,17 @@ def test_video_thumb(client, env):
     r = client.get(f"/api/assets/{asset_id(env)}/thumb", headers=headers(env))
     assert r.status_code == 200
     assert Image.open(io.BytesIO(r.content)).format == "JPEG"
+
+
+def test_warm_makes_missing_thumbs_newest_first(env):
+    make_jpeg(photos_root("ana") / "vechi.jpg", "2020:05:01 10:00:00", size=(2400, 1200))
+    make_jpeg(photos_root("ana") / "nou.jpg", "2024:05:01 10:00:00", size=(2400, 1200))
+    scan(env)
+    conn = db.connect(env["data"])
+    assert thumbs.warm(conn, limit=1) == 1
+    nou = conn.execute("SELECT sha256 FROM assets WHERE taken_at LIKE '2024%'").fetchone()[0]
+    made = list((env["data"] / "thumbs").rglob("*_256.jpg"))
+    assert [p.name for p in made] == [f"{nou}_256.jpg"]
+    assert Image.open(made[0]).size == (256, 128)
+    assert thumbs.warm(conn) == 1
+    assert thumbs.warm(conn) == 0

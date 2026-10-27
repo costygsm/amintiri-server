@@ -433,13 +433,15 @@ function photoFeed(container, url, token, { emptyText = tr('Nicio poză încă.'
     container.style.overflowAnchor = 'none';  // ținem ecranul pe loc noi, la fel în toate browserele
   }
 
+  // la derulare repede, pozele peste care ai trecut își anulează cererea: altfel serverul
+  // le face pe toate, la rând, înaintea celor la care te-ai oprit
   const lazy = new IntersectionObserver((entries) => {
-    for (const e of entries) if (e.isIntersecting) {
+    for (const e of entries) {
       const img = e.target;
-      img.src = img.dataset.src;
-      lazy.unobserve(img);
+      if (e.isIntersecting) img.src = img.dataset.src;
+      else if (!img.complete) img.removeAttribute('src');
     }
-  }, { rootMargin: '600px' });
+  }, { rootMargin: '400px' });
 
   const section = (a, g) => h('section', { class: 'day month', 'data-t': a.taken_at }, h('h3', {}, GROUPS[group].label(a.taken_at)), g);
   function add(batch) {
@@ -483,7 +485,7 @@ function photoFeed(container, url, token, { emptyText = tr('Nicio poză încă.'
     onItems?.(items);
   }
   function makeTile(a, seq) {
-    const img = h('img', { alt: '', 'data-src': thumb(a.id), decoding: 'async', onload() { this.classList.add('on'); } });
+    const img = h('img', { alt: '', 'data-src': thumb(a.id), decoding: 'async', onload() { this.classList.add('on'); lazy.unobserve(this); } });
     lazy.observe(img);
     const what = a.kind === 'video' ? tr('Clip', 'Video') : tr('Poză', 'Photo');
     const from = `${what} ${tr('din', 'from')} ${fullDate(a.taken_at)}`;
@@ -510,6 +512,9 @@ function photoFeed(container, url, token, { emptyText = tr('Nicio poză încă.'
       oncontextmenu(e) { if (e.pointerType === 'touch' || longDone) e.preventDefault(); },
     }, img, a.kind === 'video' ? h('span', { class: 'badge' }, icon('play'), a.duration_ms ? duration(a.duration_ms) : '') : null);
     const tile = h('div', { class: 'tile' }, open, check);
+    // rânduri ca la Google: fiecare poză cu forma ei (CSS-ul folosește --r doar la Zile/Luni)
+    const r = a.width && a.height ? Math.min(2.5, Math.max(0.5, a.width / a.height)) : 1;
+    tile.style.setProperty('--r', r.toFixed(3));
     bySeq.set(seq, { a, tile, check });
     return tile;
   }
