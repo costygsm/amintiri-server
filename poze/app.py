@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import API_LEVEL, __version__, auth, collections, db, extras, i18n, indexer, library, share, uploads, users
+from . import API_LEVEL, __version__, auth, collections, db, extras, i18n, indexer, lan, library, share, uploads, users
 from .config import get_settings
 
 WEB_DIR = Path(__file__).parent / "web"
@@ -190,6 +190,7 @@ def create_app(start_indexer: bool = True) -> FastAPI:
     app.include_router(collections.router)
     app.include_router(extras.router)
     app.include_router(share.router)
+    app.include_router(lan.router)
 
     # pagina web, după API, ca /api/* să nu ajungă niciodată la fișierele statice
     @app.get("/api/{rest:path}", include_in_schema=False)
@@ -214,6 +215,7 @@ def create_app(start_indexer: bool = True) -> FastAPI:
             r.headers.setdefault("Cache-Control", "no-cache")
         return r
 
+    app.middleware("http")(lan.only_from_lan)  # ultimul adăugat = primul care vede cererea
     return app
 
 
