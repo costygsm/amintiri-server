@@ -15,6 +15,6 @@ services:
     volumes:
       - /volume1/homes:/volume1/homes
       - /etc/passwd:/etc/passwd:ro         # to map DSM user names to file owners
-      - ./data:/data                       # database, thumbnails, daily database backups
+      - ./data:/data                       # create this folder first; database, thumbnails, daily backups
     restart: unless-stopped
     mem_limit: 2g

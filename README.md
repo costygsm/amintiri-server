@@ -43,7 +43,9 @@ that keeps your pictures as plain files in your own `Photos` folder.
 
 ## Install
 
-1. In DSM create a folder, e.g. `/volume1/docker/amintiri`.
+1. In File Station create a folder, e.g. `/docker/amintiri`, and **inside it a folder named `data`**
+   (Container Manager does not create missing folders: without `data` the container won't start —
+   *Bind mount failed: … does not exist*).
 2. Container Manager → **Project → Create** → path: that folder → *Create docker-compose.yml* →
    paste [`docker-compose.yml`](docker-compose.yml) → adjust `TZ` if needed → **Done**.
 3. Control Panel → Login Portal → Advanced → **Reverse Proxy → Create**:
