@@ -8,6 +8,8 @@ that keeps your pictures as plain files in your own `Photos` folder.
 - **Your files stay yours.** Photos go to `homes/<user>/Photos/<year>/<month>/`, named by the date they
   were taken. Stop using Amintiri tomorrow and nothing is locked in.
 - **Light.** One small container (Python + SQLite); runs fine on ARM models.
+- **Memories, like Google Photos:** "on this day" from past years at the top of the timeline, full-screen
+  stories on the phone and a morning notification. Synology Photos has nothing like this.
 - **Android app:** automatic backup (Wi-Fi or mobile data), timeline by day / month / year, albums,
   places, "on this day" memories, search ("summer 2024", "august", a city), favourites,
   30-day trash, free-up-space, share links for albums, fingerprint lock.
@@ -25,12 +27,14 @@ that keeps your pictures as plain files in your own `Photos` folder.
 | Select many, add to an album, download or delete | Full-screen viewer | Follows the system's dark theme |
 
 <p align="center">
-  <img src="docs/screenshots/phone-timeline.jpg" alt="On a phone" width="30%">
-  <img src="docs/screenshots/phone-timeline-dark.jpg" alt="On a phone, dark theme" width="30%">
-  <img src="docs/screenshots/phone-places.jpg" alt="Places on a phone" width="30%">
+  <img src="docs/screenshots/phone-memory.jpg" alt="A memory in the Android app: 2 years ago" width="24%">
+  <img src="docs/screenshots/phone-timeline.jpg" alt="On a phone" width="24%">
+  <img src="docs/screenshots/phone-timeline-dark.jpg" alt="On a phone, dark theme" width="24%">
+  <img src="docs/screenshots/phone-places.jpg" alt="Places on a phone" width="24%">
 </p>
+<p align="center"><sub>Left: a memory in the Android app. The others: the web app on a phone.</sub></p>
 
-<sub>Sample photos from <a href="https://unsplash.com">Unsplash</a> via <a href="https://picsum.photos">Lorem Picsum</a>.</sub>
+<sub>Sample photos from <a href="https://unsplash.com">Unsplash</a> via <a href="https://picsum.photos">Lorem Picsum</a>; the memory is the author's own.</sub>
 
 > The interface is in **Romanian and English** (follows the phone or browser; can be changed in Settings).
 
