@@ -13,6 +13,25 @@ that keeps your pictures as plain files in your own `Photos` folder.
   30-day trash, free-up-space, share links for albums, fingerprint lock.
 - **Web app** in the browser: the same timeline, upload, albums, multi-select, search.
 
+<p align="center">
+  <img src="docs/screenshots/timeline.jpg" alt="Timeline with “On this day” memories" width="100%">
+</p>
+
+| | | |
+|---|---|---|
+| <img src="docs/screenshots/places.jpg" alt="Places"> | <img src="docs/screenshots/albums.jpg" alt="Albums"> | <img src="docs/screenshots/search.jpg" alt="Search for “summer 2026”"> |
+| **Places**, from the photos' GPS — offline, nothing leaves the NAS | **Albums**, shareable by link | **Search**: “summer 2026”, “August”, a city |
+| <img src="docs/screenshots/select.jpg" alt="Multi-select"> | <img src="docs/screenshots/viewer.jpg" alt="Viewer"> | <img src="docs/screenshots/timeline-dark.jpg" alt="Dark theme"> |
+| Select many, add to an album, download or delete | Full-screen viewer | Follows the system's dark theme |
+
+<p align="center">
+  <img src="docs/screenshots/phone-timeline.jpg" alt="On a phone" width="30%">
+  <img src="docs/screenshots/phone-timeline-dark.jpg" alt="On a phone, dark theme" width="30%">
+  <img src="docs/screenshots/phone-places.jpg" alt="Places on a phone" width="30%">
+</p>
+
+<sub>Sample photos from <a href="https://unsplash.com">Unsplash</a> via <a href="https://picsum.photos">Lorem Picsum</a>.</sub>
+
 > The interface is in **Romanian and English** (follows the phone or browser; can be changed in Settings).
 
 ## Requirements

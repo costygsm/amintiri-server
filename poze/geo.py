@@ -50,6 +50,28 @@ EXONYMS = {
 }
 REGIONS = {"Bucharest": "București", "State of Berlin": "Berlin", "Land Berlin": "Berlin"}
 
+# În baza de date locurile stau pe românește; pentru cine folosește aplicația în engleză le traducem la ieșire
+COUNTRIES_EN = {
+    "RO": "Romania", "MD": "Moldova", "HU": "Hungary", "BG": "Bulgaria", "RS": "Serbia",
+    "UA": "Ukraine", "GR": "Greece", "TR": "Turkey", "IT": "Italy", "ES": "Spain", "FR": "France",
+    "DE": "Germany", "AT": "Austria", "CH": "Switzerland", "GB": "United Kingdom", "IE": "Ireland",
+    "NL": "Netherlands", "BE": "Belgium", "LU": "Luxembourg", "PT": "Portugal", "PL": "Poland",
+    "CZ": "Czechia", "SK": "Slovakia", "SI": "Slovenia", "HR": "Croatia", "BA": "Bosnia and Herzegovina",
+    "ME": "Montenegro", "MK": "North Macedonia", "AL": "Albania", "CY": "Cyprus", "MT": "Malta",
+    "DK": "Denmark", "SE": "Sweden", "NO": "Norway", "FI": "Finland", "IS": "Iceland",
+    "EE": "Estonia", "LV": "Latvia", "LT": "Lithuania", "US": "United States", "CA": "Canada",
+    "EG": "Egypt", "TN": "Tunisia", "MA": "Morocco", "AE": "United Arab Emirates", "TH": "Thailand",
+    "IL": "Israel", "JP": "Japan", "CN": "China", "MX": "Mexico", "BR": "Brazil", "RU": "Russia",
+}
+_EN = {**{ro: COUNTRIES_EN[cc] for cc, ro in COUNTRIES.items()},
+       **{ro: en for en, ro in EXONYMS.items() if en != ro},
+       **{ro: en for en, ro in REGIONS.items() if en != ro and ro != "Berlin"}}
+
+
+def english(name: str) -> str:
+    """„Roma” → „Rome”, „Grecia” → „Greece”; ce nu știm rămâne cum e."""
+    return _EN.get(name, name)
+
 
 @dataclass(frozen=True)
 class Place:

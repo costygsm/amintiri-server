@@ -44,3 +44,10 @@ def localize(body: dict, req: Request) -> dict:
     if wants_english(req) and body.get("error") in EN:
         return {**body, "error": EN[body["error"]]}
     return body
+
+
+def place(row, req: Request, fields=("name", "region", "country")) -> dict:
+    """Numele locului în limba cerută (în baza de date sunt pe românește)."""
+    from .geo import english
+    en = wants_english(req)
+    return {f: (english(row[f]) if en and row[f] else row[f]) for f in fields}

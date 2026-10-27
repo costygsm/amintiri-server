@@ -7,13 +7,14 @@ import unicodedata
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, Response
 from PIL import Image
 from pydantic import BaseModel, Field
 
-from . import naming, thumbs, trash, users
+from . import i18n, naming, thumbs, trash, users
+from .geo import english
 from .auth import ApiError, current_user, get_db
 from .library import NOT_FOUND, own_asset, paged
 from .metadata import FMT, TZ
@@ -82,7 +83,7 @@ def camera_of(path: Path) -> str | None:
 
 
 @router.get("/api/assets/{asset_id}/info")
-async def info(asset_id: int, user: str = Depends(current_user), conn: sqlite3.Connection = Depends(get_db)):
+async def info(asset_id: int, req: Request, user: str = Depends(current_user), conn: sqlite3.Connection = Depends(get_db)):
     row = await run_in_threadpool(own_asset, conn, user, asset_id)
     rel = Path(row["relpath"])
     camera = None
@@ -95,7 +96,7 @@ async def info(asset_id: int, user: str = Depends(current_user), conn: sqlite3.C
     if row["place_id"]:
         p = conn.execute("SELECT * FROM places WHERE id=?", (row["place_id"],)).fetchone()
         if p:
-            place = {"id": p["id"], "name": p["name"], "region": p["region"], "country": p["country"]}
+            place = {"id": p["id"], **i18n.place(p, req)}
     fav = conn.execute("SELECT 1 FROM favorites WHERE user=? AND sha256=?", (user, row["sha256"])).fetchone()
     albums = conn.execute("SELECT a.id, a.name FROM albums a JOIN album_items i ON i.album_id=a.id"
                           " WHERE a.user=? AND i.sha256=? ORDER BY a.name", (user, row["sha256"])).fetchall()
@@ -164,7 +165,7 @@ def best(needle: str, rows, fields) -> list:
 
 
 @router.get("/api/search")
-def search(q: str = Query(max_length=100), before: str | None = None, limit: int = Query(200, ge=1, le=500),
+def search(req: Request, q: str = Query(max_length=100), before: str | None = None, limit: int = Query(200, ge=1, le=500),
            user: str = Depends(current_user), conn: sqlite3.Connection = Depends(get_db)):
     if not q.strip():
         raise ApiError(422, "Scrie ce cauți.")
@@ -174,7 +175,9 @@ def search(q: str = Query(max_length=100), before: str | None = None, limit: int
         needle = plain(p["text"])
         rows = conn.execute("SELECT DISTINCT p.* FROM places p JOIN assets a ON a.place_id=p.id"
                             " WHERE a.user=? AND a.deleted_at IS NULL", (user,)).fetchall()
-        places = best(needle, rows, lambda r: [r["name"], r["region"], r["country"]])
+        # și pe românește, și pe englezește: „Roma” și „Rome”, „Grecia” și „Greece”
+        places = best(needle, rows, lambda r: [r["name"], r["region"], r["country"],
+                                              english(r["name"]), english(r["country"] or "")])
         albums = [r["id"] for r in best(needle, conn.execute("SELECT id, name FROM albums WHERE user=?", (user,)),
                                         lambda r: [r["name"]])]
         if not places and not albums:
@@ -184,7 +187,7 @@ def search(q: str = Query(max_length=100), before: str | None = None, limit: int
         extra += (f" AND (place_id IN ({marks_p})"
                   f" OR sha256 IN (SELECT sha256 FROM album_items WHERE album_id IN ({marks_a})))")
         params += pids + albums
-        names = {r["name"] for r in places}
+        names = {i18n.place(r, req, ("name",))["name"] for r in places}
         label.append(names.pop() if len(names) == 1 and not albums else p["text"])
     if p["months"]:
         extra += f" AND CAST(substr(taken_at, 6, 2) AS INTEGER) IN ({','.join('?' * len(p['months']))})"
@@ -201,13 +204,13 @@ def search(q: str = Query(max_length=100), before: str | None = None, limit: int
 
 
 @router.get("/api/search/suggestions")
-def suggestions(user: str = Depends(current_user), conn: sqlite3.Connection = Depends(get_db)):
+def suggestions(req: Request, user: str = Depends(current_user), conn: sqlite3.Connection = Depends(get_db)):
     places = conn.execute(
         "SELECT p.id, p.name, p.country, COUNT(DISTINCT a.sha256) n FROM places p JOIN assets a ON a.place_id=p.id"
         " WHERE a.user=? AND a.deleted_at IS NULL GROUP BY p.id ORDER BY n DESC, p.name LIMIT 12", (user,)).fetchall()
     years = conn.execute("SELECT DISTINCT CAST(substr(taken_at, 1, 4) AS INTEGER) y FROM assets"
                          " WHERE user=? AND deleted_at IS NULL ORDER BY y DESC", (user,)).fetchall()
-    return {"places": [{"id": r["id"], "name": r["name"], "country": r["country"], "count": r["n"]} for r in places],
+    return {"places": [{"id": r["id"], **i18n.place(r, req, ("name", "country")), "count": r["n"]} for r in places],
             "years": [r["y"] for r in years]}
 
 

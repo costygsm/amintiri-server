@@ -227,3 +227,11 @@ def test_every_english_message_is_used():
     flat = src.replace('"\n', "").replace('                                     "', "").replace('           "', "")
     missing = [ro for ro in EN if ro not in flat and ro.split(" În DSM")[0] not in src]
     assert not missing, missing
+
+
+def test_place_names_follow_language():
+    from poze.geo import english
+    assert english("Grecia") == "Greece"
+    assert english("Statele Unite") == "United States"
+    assert english("Roma") == "Rome"
+    assert english("Brașov") == "Brașov"

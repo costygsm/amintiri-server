@@ -2,9 +2,10 @@
 import sqlite3
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, Field, field_validator
 
+from . import i18n
 from .auth import ApiError, current_user, get_db
 from .library import paged
 
@@ -16,7 +17,7 @@ _LIVE = "SELECT DISTINCT sha256 FROM assets WHERE user=? AND deleted_at IS NULL"
 
 
 @router.get("/api/places")
-def places(user: str = Depends(current_user), conn: sqlite3.Connection = Depends(get_db)):
+def places(req: Request, user: str = Depends(current_user), conn: sqlite3.Connection = Depends(get_db)):
     rows = conn.execute("""
         WITH u AS (
           SELECT id, place_id, taken_at, ROW_NUMBER() OVER (PARTITION BY sha256 ORDER BY id) AS rn
@@ -28,7 +29,7 @@ def places(user: str = Depends(current_user), conn: sqlite3.Connection = Depends
           FROM u WHERE rn=1 GROUP BY place_id)
         SELECT p.*, c.n, c.cover FROM c JOIN places p ON p.id=c.place_id
         ORDER BY c.n DESC, p.name""", (user,)).fetchall()
-    return {"places": [{"id": r["id"], "name": r["name"], "region": r["region"], "country": r["country"],
+    return {"places": [{"id": r["id"], **i18n.place(r, req),
                         "lat": r["lat"], "lon": r["lon"], "count": r["n"], "cover_id": r["cover"]} for r in rows]}
 
 

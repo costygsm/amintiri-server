@@ -77,6 +77,8 @@ def test_places_api(client, env):
     assert [(p["name"], p["count"]) for p in places] == [("Avrig", 2), ("Sibiu", 1)]
     avrig = places[0]
     assert avrig["region"] == "Sibiu" and avrig["country"] == "România"
+    en = client.get("/api/places", headers={**headers(env), "Accept-Language": "en-US"}).json()["places"]
+    assert en[0]["name"] == "Avrig" and en[0]["country"] == "Romania"
     assert avrig["lat"] == pytest.approx(45.7167, abs=1e-3)
     page = client.get(f"/api/places/{avrig['id']}/assets", headers=headers(env)).json()
     assert [a["taken_at"] for a in page["items"]] == ["2024-07-01 10:00:00", "2024-05-01 10:00:00"]

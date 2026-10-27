@@ -108,6 +108,9 @@ def test_search_by_place_without_diacritics(client, env, library):
     assert names(search(client, env, "roma"), library) == ["r1", "r2"]
     assert names(search(client, env, "bucuresti"), library) == ["b1"]
     assert names(search(client, env, "Italia"), library) == ["r1", "r2"]
+    # și în engleză
+    assert names(search(client, env, "Rome"), library) == ["r1", "r2"]
+    assert names(search(client, env, "Italy"), library) == ["r1", "r2"]
 
 
 def test_search_by_month_year_and_season(client, env, library):

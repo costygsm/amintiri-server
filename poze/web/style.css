@@ -223,7 +223,7 @@ h3.hint { margin: 20px 4px 8px; font-size: 14px; color: var(--muted); font-weigh
 
 /* carduri de album / loc */
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
-.card { border: 0; padding: 0; background: none; text-align: left; display: grid; gap: 8px; }
+.card { border: 0; padding: 0; background: none; text-align: left; display: grid; gap: 8px; align-content: start; }
 .card .cover { aspect-ratio: 1; border-radius: var(--radius); overflow: hidden; background: var(--surface-2); display: grid; place-items: center; color: var(--muted); }
 .card .cover img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s; }
 .card:hover .cover img { transform: scale(1.04); }
