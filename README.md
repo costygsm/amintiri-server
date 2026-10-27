@@ -127,6 +127,13 @@ To turn it off, set `POZE_HOST: 127.0.0.1`; everything then goes through the dom
 - Shared albums only reference photos: each photo stays in its owner's folder, and leaving an album
   takes your photos out of it.
 
+## How it's built
+
+Amintiri is developed with heavy AI assistance (Claude). The ideas, the decisions and the testing are
+mine: it runs every day on my own Synology NAS and Android phone with my family's photos, and each
+change goes to a test instance before it reaches mine. The server has an automated test suite
+(`pytest`, 200+ tests) and the code is here to read — if something looks wrong, please open an issue.
+
 ## Data and privacy
 
 Everything stays on your NAS. The app talks only to your server and, to check for app updates,
