@@ -93,13 +93,46 @@ function iconBtn(name, label, onclick, cls = 'icon-btn') {
   return h('button', { class: cls, type: 'button', 'aria-label': label, title: label, onclick }, icon(name));
 }
 const $app = () => document.getElementById('app');
+
+// ---------- mișcare ----------
+// cine a cerut sistemului „mai puține animații” le primește fără mișcare
+const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const EASE_OUT = 'cubic-bezier(.2, .8, .2, 1)';
+/** Scoate un element cu o mică animație de ieșire (mai scurtă decât intrarea). */
+function leave(el, keyframes = [{ opacity: 1 }, { opacity: 0, transform: 'translateY(8px)' }]) {
+  if (!el?.isConnected) return;
+  if (calm() || !el.animate) { el.remove(); return; }
+  el.animate(keyframes, { duration: 160, easing: 'ease-in', fill: 'forwards' }).finished.then(() => el.remove(), () => el.remove());
+}
+/**
+ * Schimbare animată cu View Transitions: poza din grilă „zboară” în vizualizator și înapoi.
+ * [named] primește elementul care poartă numele comun înainte și după schimbare.
+ * Fără suport (Firefox vechi) sau cu animațiile oprite, schimbarea se face direct.
+ */
+async function morph(update, before, after) {
+  if (calm() || !document.startViewTransition) { await update(); return; }
+  if (before) before.style.viewTransitionName = 'foto';
+  const vt = document.startViewTransition(async () => {
+    if (before) before.style.viewTransitionName = '';
+    await update();
+    const el = after?.();
+    if (el) {
+      el.style.viewTransitionName = 'foto';
+      // așteptăm puțin poza mare, ca animația să nu ajungă într-un dreptunghi gol
+      await Promise.race([el.decode?.().catch(() => {}), new Promise((r) => setTimeout(r, 250))]);
+    }
+  });
+  vt.finished.finally(() => { const el = after?.(); if (el) el.style.viewTransitionName = ''; });
+  await vt.updateCallbackDone.catch(() => {});
+}
+
 let toastTimer;
 function toast(text) {
   document.querySelector('.toast')?.remove();
   const t = h('div', { class: 'toast', role: 'status' }, text);
   document.body.append(t);
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.remove(), 3500);
+  toastTimer = setTimeout(() => leave(t), 3500);
 }
 /** 1 poză, 3 poze, 20 de poze — sau 1 photo, 3 photos. */
 function plural(n, one, many, enOne, enMany) {
@@ -307,6 +340,11 @@ function route() {
       selectionCleanup?.(); selectionCleanup = null;
       main.replaceChildren();
       window.scrollTo(0, 0);
+      // pagina nouă intră ușor de jos în sus
+      if (!calm() && main.animate) {
+        main.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }],
+          { duration: 280, easing: EASE_OUT });
+      }
       r.render(token, ...m.slice(1)).catch((e) => {
         if (token === renderToken && e.status !== 401) main.replaceChildren(h('div', { class: 'empty' }, h('strong', {}, tr('Nu s-a putut încărca.', "Couldn't load.")), e.message));
       });
@@ -365,7 +403,7 @@ function photoFeed(container, url, token, { emptyText = tr('Nicio poză încă.'
         onclick(e) {
           if (longDone) { longDone = false; return; }
           if (selected.size || e.shiftKey || e.ctrlKey || e.metaKey) select(idx, e.shiftKey);
-          else openViewer(items, idx, { onChange: refresh });
+          else openViewer(items, idx, { onChange: refresh, thumbOf: (k) => tiles[k]?.tile.querySelector('img') });
         },
         onpointerdown(e) {
           if (e.pointerType !== 'touch') return;
@@ -691,7 +729,7 @@ async function pickAlbum(shas) {
 
 // ---------- vizualizatorul ----------
 let viewerAlbum = null;  // albumul deschis, pentru „Scoate din album”
-function openViewer(items, start, { onChange } = {}) {
+function openViewer(items, start, { onChange, thumbOf } = {}) {
   const inAlbum = location.hash.startsWith('#/album/') ? viewerAlbum : null;
   let i = start;
   let changed = false;
@@ -751,18 +789,27 @@ function openViewer(items, start, { onChange } = {}) {
     if (x0 != null && Math.abs(e.clientX - x0) > 60) go(e.clientX < x0 ? 1 : -1);
     x0 = null;
   });
+  // poza curentă din vizualizator și miniatura ei din grilă: între ele „zboară” animația
+  const big = () => stage.querySelector('img');
+  const small = () => { const t = thumbOf?.(i); return t?.classList.contains('on') ? t : null; };
   function close() {
     document.removeEventListener('keydown', key);
-    v.remove();
-    document.body.style.overflow = '';
-    before?.focus?.();
-    if (changed) onChange?.();
+    const done = () => {
+      v.remove();
+      document.body.style.overflow = '';
+      before?.focus?.();
+      if (changed) onChange?.();
+    };
+    if (changed || !thumbOf) { leave(v, [{ opacity: 1 }, { opacity: 0 }]); setTimeout(done, calm() ? 0 : 170); return; }
+    small()?.scrollIntoView({ block: 'nearest' });
+    morph(done, big(), small);
   }
   document.addEventListener('keydown', key);
-  document.body.style.overflow = 'hidden';
-  document.body.append(v);
-  show();
-  v.focus();
+  morph(() => {
+    document.body.style.overflow = 'hidden';
+    document.body.append(v);
+    show();
+  }, small(), big).then(() => v.focus());
 }
 
 // ---------- încărcarea ----------

@@ -1,5 +1,22 @@
 /* Amintiri pe web: aceleași culori ca aplicația (petrol), temă luminoasă și întunecată. */
+/* Inter, găzduit aici (nimic nu pleacă spre Google); latin-ext are ș, ț, ă */
+@font-face {
+  font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url(fonts/inter-latin.woff2) format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url(fonts/inter-latin-ext.woff2) format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
 :root {
+  /* mișcare: intrările încetinesc la sosire, ieșirile sunt mai scurte */
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --ease-spring: cubic-bezier(.34, 1.4, .64, 1);
+  --fast: 150ms;
+  --mid: 250ms;
+  --slow: 400ms;
   --primary: #0e6e6e;
   --on-primary: #fff;
   --primary-soft: #cce8e7;
@@ -14,6 +31,7 @@
   --scrim: rgb(0 0 0 / 0.6);
   --radius: 20px;
   --shadow: 0 8px 28px rgb(0 32 32 / 0.16);
+  --shadow-sm: 0 1px 2px rgb(0 32 32 / .08), 0 2px 8px rgb(0 32 32 / .06);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -30,6 +48,7 @@
     --line: #3f4948;
     --danger: #ffb4ab;
     --shadow: 0 8px 28px rgb(0 0 0 / 0.5);
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / .4), 0 2px 8px rgb(0 0 0 / .3);
     color-scheme: dark;
   }
 }
@@ -39,11 +58,16 @@ html, body { margin: 0; }
 body {
   background: var(--bg);
   color: var(--text);
-  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 15px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-feature-settings: "cv11", "ss03";  /* „a” și „l” mai ușor de citit */
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
+h1, h2, h3 { letter-spacing: -0.02em; text-wrap: balance; }
 button, input { font: inherit; color: inherit; }
+button, a { touch-action: manipulation; }
 button { cursor: pointer; }
+@media (pointer: fine) { html { overscroll-behavior: none; } }
 :focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
 .hidden { display: none !important; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
@@ -53,7 +77,10 @@ button { cursor: pointer; }
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 44px; padding: 0 20px; border-radius: 999px; border: 0;
   background: var(--primary); color: var(--on-primary); font-weight: 600;
+  transition: background-color var(--fast), box-shadow var(--fast), transform var(--fast) var(--ease-out);
 }
+.btn:not(.text):not(.danger):hover { box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 35%, transparent); }
+.btn:active, .icon-btn:active, .chip:active, .seg button:active { transform: scale(.96); }
 .btn:disabled { opacity: 0.55; cursor: default; }
 .btn.tonal { background: var(--primary-soft); color: var(--on-primary-soft); }
 .btn.text { background: none; color: var(--primary); padding: 0 12px; }
@@ -61,6 +88,7 @@ button { cursor: pointer; }
 .icon-btn {
   width: 44px; height: 44px; border-radius: 50%; border: 0; background: none;
   display: inline-grid; place-items: center; color: inherit;
+  transition: background-color var(--fast), transform var(--fast) var(--ease-out);
 }
 .icon-btn:hover, .btn.text:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
 svg.i { width: 22px; height: 22px; fill: currentColor; flex: none; }
@@ -73,7 +101,9 @@ svg.i { width: 22px; height: 22px; fill: currentColor; flex: none; }
 .login form {
   width: min(400px, 100%); background: var(--surface); border-radius: 28px; padding: 32px 28px;
   box-shadow: var(--shadow); display: grid; gap: 16px;
+  animation: rise var(--slow) var(--ease-out) both;
 }
+.login img { animation: pop .5s var(--ease-spring) .1s both; }
 .login { align-content: center; gap: 16px; }
 .login a.apk { text-decoration: none; }
 .login .lang { justify-self: center; color: var(--muted); }
@@ -86,8 +116,9 @@ svg.i { width: 22px; height: 22px; fill: currentColor; flex: none; }
 .field span { font-size: 13px; font-weight: 600; color: var(--muted); }
 .field input {
   height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line);
-  background: var(--bg);
+  background: var(--bg); transition: border-color var(--fast), box-shadow var(--fast);
 }
+.field input:focus { box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent); }
 .pw { position: relative; display: grid; }
 .pw input { padding-right: 52px; }
 .pw .icon-btn { position: absolute; right: 2px; top: 2px; color: var(--muted); }
@@ -105,15 +136,20 @@ header.top {
 nav.tabs { display: flex; gap: 4px; flex: 1; }
 nav.tabs a {
   padding: 8px 16px; border-radius: 999px; text-decoration: none; color: var(--muted); font-weight: 600;
+  transition: background-color var(--mid), color var(--mid);
 }
+nav.tabs a:hover:not([aria-current]) { background: color-mix(in srgb, currentColor 8%, transparent); color: var(--text); }
 nav.tabs a[aria-current="page"] { background: var(--primary-soft); color: var(--on-primary-soft); }
 .avatar {
   width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: var(--on-primary);
   display: grid; place-items: center; font-weight: 700; border: 0;
+  transition: box-shadow var(--fast), transform var(--fast) var(--ease-out);
 }
+.avatar:hover { box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 20%, transparent); }
 .menu {
   position: absolute; right: 16px; top: 58px; background: var(--surface); border-radius: 16px;
   box-shadow: var(--shadow); padding: 8px; min-width: 220px; z-index: 20;
+  transform-origin: top right; animation: pop-in var(--mid) var(--ease-out);
 }
 .menu .who { padding: 8px 12px; color: var(--muted); font-size: 13px; }
 .menu button, .menu a.btn { width: 100%; justify-content: flex-start; text-decoration: none; }
@@ -124,18 +160,27 @@ nav.tabs a[aria-current="page"] { background: var(--primary-soft); color: var(--
 .menu .langs button[aria-checked="true"] { background: var(--primary-soft); color: var(--on-primary-soft); }
 
 main { padding: 8px max(16px, env(safe-area-inset-left)) 120px; max-width: 1600px; margin: 0 auto; }
-h2.title { font-size: 28px; margin: 20px 4px 12px; display: flex; align-items: center; gap: 8px; }
+h2.title { font-size: 30px; font-weight: 750; margin: 24px 4px 14px; display: flex; align-items: center; gap: 8px; }
 .empty { text-align: center; color: var(--muted); padding: 80px 16px; }
 .empty strong { display: block; color: var(--text); font-size: 18px; margin-bottom: 4px; }
 
 /* amintiri */
-.memories { display: flex; gap: 12px; overflow-x: auto; padding: 12px 4px 4px; scroll-snap-type: x mandatory; }
+.memories { display: flex; gap: 14px; overflow-x: auto; padding: 12px 4px 12px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.memories::-webkit-scrollbar { display: none; }
+/* ca poveștile: inel în culoarea aplicației, intră pe rând */
 .memory {
-  position: relative; flex: none; width: 150px; aspect-ratio: 3 / 4; border-radius: var(--radius); overflow: hidden;
+  position: relative; flex: none; width: 156px; aspect-ratio: 3 / 4; border-radius: var(--radius); overflow: hidden;
   border: 0; padding: 0; scroll-snap-align: start; background: var(--surface-2);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--primary), var(--shadow-sm);
+  margin: 4px; transition: transform var(--mid) var(--ease-out), box-shadow var(--mid);
+  animation: rise var(--slow) var(--ease-out) both;
 }
-.memory img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s; }
-.memory:hover img { transform: scale(1.05); }
+.memory:nth-child(2) { animation-delay: 60ms; }
+.memory:nth-child(3) { animation-delay: 120ms; }
+.memory:nth-child(n+4) { animation-delay: 180ms; }
+.memory img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .6s var(--ease-out); }
+.memory:hover { transform: translateY(-3px); }
+.memory:hover img { transform: scale(1.06); }
 .memory span {
   position: absolute; inset: auto 0 0; padding: 32px 12px 12px; color: #fff; font-weight: 700; text-align: left;
   background: linear-gradient(transparent, var(--scrim)); text-shadow: 0 1px 3px rgb(0 0 0 / .6);
@@ -143,7 +188,12 @@ h2.title { font-size: 28px; margin: 20px 4px 12px; display: flex; align-items: c
 
 /* grila de poze */
 .day { margin-top: 18px; }
-.day h3 { font-size: 15px; margin: 0 4px 8px; font-weight: 600; }
+/* titlul lunii/zilei rămâne sus cât derulezi prin ea, sub antet */
+.day h3 {
+  font-size: 15px; margin: 0 0 8px; padding: 6px 4px; font-weight: 650;
+  position: sticky; top: 64px; z-index: 5;
+  background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px);
+}
 .month h3 { font-size: 20px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px; }
 @media (max-width: 600px) {
@@ -158,18 +208,28 @@ h2.title { font-size: 28px; margin: 20px 4px 12px; display: flex; align-items: c
   .memory { width: 120px; }
   h2.title { font-size: 22px; }
 }
+/* până vine miniatura: o lumină care trece peste pătrat (se oprește când poza a sosit) */
 .tile {
-  position: relative; aspect-ratio: 1; border: 0; padding: 0; background: var(--surface-2); overflow: hidden; border-radius: 6px;
+  position: relative; aspect-ratio: 1; border: 0; padding: 0; overflow: hidden; border-radius: 8px;
+  background: linear-gradient(100deg, var(--surface-2) 40%, color-mix(in srgb, var(--surface-2) 60%, var(--bg)) 50%, var(--surface-2) 60%) 0 0 / 300% 100%;
+  animation: shimmer 1.4s linear infinite;
+  transition: background-color var(--mid);
 }
-.tile .open { all: unset; display: block; width: 100%; height: 100%; cursor: pointer; transition: transform .15s; }
+.tile:has(img.on) { animation: none; background: var(--surface-2); }
+.tile .open { all: unset; display: block; width: 100%; height: 100%; cursor: pointer; transition: transform var(--mid) var(--ease-spring); }
 .tile .open:focus-visible { outline: 3px solid var(--primary); outline-offset: -3px; }
-.tile img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .25s; }
+.tile img {
+  width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transform: scale(1.04);
+  transition: opacity var(--slow) var(--ease-out), transform .6s var(--ease-out), filter var(--fast);
+}
 /* bifa: la trecerea mouse-ului, mereu cât timp alegi; pe telefon (fără hover) doar în modul alegere */
 .tile .check {
   position: absolute; left: 6px; top: 6px; width: 28px; height: 28px; border-radius: 50%; padding: 0;
   border: 2px solid #fff; background: rgb(0 0 0 / .25); color: transparent; display: grid; place-items: center;
-  opacity: 0; transition: opacity .15s; box-shadow: 0 1px 3px rgb(0 0 0 / .4); cursor: pointer;
+  opacity: 0; transition: opacity var(--fast), background-color var(--fast), transform var(--mid) var(--ease-spring);
+  box-shadow: 0 1px 3px rgb(0 0 0 / .4); cursor: pointer;
 }
+.tile.picked .check { transform: scale(1.1); }
 .tile .check svg { width: 18px; height: 18px; }
 @media (hover: hover) { .tile:hover .check { opacity: 1; } }
 .tile .check:focus-visible, body.selecting .tile .check { opacity: 1; }
@@ -177,15 +237,18 @@ h2.title { font-size: 28px; margin: 20px 4px 12px; display: flex; align-items: c
 .tile.picked .open { transform: scale(.86); border-radius: 6px; overflow: hidden; }
 .tile.picked .check { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 .selbar {
-  position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 30;
+  position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); translate: -50% 0; z-index: 30;
+  animation: slide-up var(--mid) var(--ease-out);
   display: flex; align-items: center; gap: 4px; padding: 6px 8px 6px 6px; border-radius: 999px;
   background: var(--surface); box-shadow: var(--shadow); width: min(560px, calc(100% - 32px));
 }
-.selbar strong { padding: 0 6px; white-space: nowrap; }
+.selbar strong { padding: 0 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .selbar .spacer { flex: 1; }
 .selbar.busy button { pointer-events: none; opacity: .4; }
-.tile img.on { opacity: 1; }
-.tile:hover img { filter: brightness(.92); }
+.tile img.on { opacity: 1; transform: none; }
+@media (hover: hover) {
+  .tile:hover img.on { transform: scale(1.04); filter: brightness(.94); }
+}
 .tile .badge {
   position: absolute; right: 6px; bottom: 6px; color: #fff; font-size: 12px; font-weight: 700;
   display: flex; align-items: center; gap: 2px; text-shadow: 0 1px 3px rgb(0 0 0 / .8);
@@ -205,28 +268,47 @@ h2.title { font-size: 28px; margin: 20px 4px 12px; display: flex; align-items: c
 /* zi / lună / an */
 .toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin: 12px 4px 0; }
 .seg { display: inline-flex; background: var(--surface-2); border-radius: 999px; padding: 3px; }
-.seg button { border: 0; background: none; color: inherit; border-radius: 999px; padding: 8px 14px; min-height: 36px; font-weight: 600; }
+.seg button {
+  border: 0; background: none; color: inherit; border-radius: 999px; padding: 8px 14px; min-height: 36px; font-weight: 600;
+  transition: background-color var(--mid), color var(--mid), box-shadow var(--mid), transform var(--fast) var(--ease-out);
+}
 .seg button[aria-checked="true"] { background: var(--surface); color: var(--primary); box-shadow: 0 1px 3px rgb(0 0 0 / .15); }
 
 /* căutare */
 form.search {
   display: flex; align-items: center; gap: 10px; margin: 16px 0 8px; padding: 0 16px; height: 52px;
   border-radius: 999px; background: var(--surface-2); color: var(--muted);
+  transition: box-shadow var(--fast), background-color var(--fast);
 }
+form.search:focus-within { background: var(--surface); box-shadow: var(--shadow-sm), 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent); }
 form.search input { flex: 1; min-width: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 17px; outline: none; height: 100%; }
 form.search:focus-within { outline: 2px solid var(--primary); }
 h3.hint { margin: 20px 4px 8px; font-size: 14px; color: var(--muted); font-weight: 600; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { border: 1px solid var(--line); background: var(--surface); color: inherit; border-radius: 999px; padding: 8px 14px; min-height: 40px; font: inherit; }
+.chip {
+  border: 1px solid var(--line); background: var(--surface); color: inherit; border-radius: 999px; padding: 8px 14px; min-height: 40px; font: inherit;
+  transition: background-color var(--fast), color var(--fast), border-color var(--fast), transform var(--fast) var(--ease-out);
+}
 .chip:hover { background: var(--primary-soft); color: var(--on-primary-soft); border-color: transparent; }
 .loading { text-align: center; color: var(--muted); padding: 24px; }
 
 /* carduri de album / loc */
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
 .card { border: 0; padding: 0; background: none; text-align: left; display: grid; gap: 8px; align-content: start; }
-.card .cover { aspect-ratio: 1; border-radius: var(--radius); overflow: hidden; background: var(--surface-2); display: grid; place-items: center; color: var(--muted); }
-.card .cover img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s; }
-.card:hover .cover img { transform: scale(1.04); }
+.card { animation: rise var(--slow) var(--ease-out) both; }
+.card:nth-child(2) { animation-delay: 40ms; }
+.card:nth-child(3) { animation-delay: 80ms; }
+.card:nth-child(4) { animation-delay: 120ms; }
+.card:nth-child(5) { animation-delay: 160ms; }
+.card:nth-child(n+6) { animation-delay: 200ms; }
+.card .cover {
+  aspect-ratio: 1; border-radius: var(--radius); overflow: hidden; background: var(--surface-2); display: grid; place-items: center; color: var(--muted);
+  transition: transform var(--mid) var(--ease-out), box-shadow var(--mid);
+}
+.card .cover img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s var(--ease-out); }
+.card:hover .cover { transform: translateY(-3px); box-shadow: var(--shadow); }
+.card:hover .cover img { transform: scale(1.05); }
+.card b { overflow-wrap: anywhere; }
 .card b { display: block; padding: 0 4px; }
 .card small { display: block; padding: 0 4px; color: var(--muted); }
 .card.new .cover { border: 2px dashed var(--line); background: none; }
@@ -234,7 +316,10 @@ h3.hint { margin: 20px 4px 8px; font-size: 14px; color: var(--muted); font-weigh
 /* vizualizatorul */
 .viewer {
   position: fixed; inset: 0; z-index: 50; background: #000; display: grid; grid-template-rows: auto 1fr; color: #fff;
+  overscroll-behavior: contain;
 }
+/* poza nouă (săgeți, glisare) intră ușor; prima vine din grilă prin View Transitions */
+.viewer .stage img { animation: fade var(--mid) var(--ease-out); }
 .viewer .bar {
   display: flex; align-items: center; gap: 4px; padding: 8px 12px; z-index: 2;
   background: linear-gradient(rgb(0 0 0 / .65), transparent);
@@ -248,7 +333,9 @@ h3.hint { margin: 20px 4px 8px; font-size: 14px; color: var(--muted); font-weigh
 .viewer .nav {
   position: absolute; top: 50%; translate: 0 -50%; width: 52px; height: 52px; border-radius: 50%;
   background: rgb(0 0 0 / .45); color: #fff; border: 0; display: grid; place-items: center;
+  backdrop-filter: blur(8px); transition: background-color var(--fast), transform var(--fast) var(--ease-out);
 }
+.viewer .nav:hover { background: rgb(0 0 0 / .65); }
 .viewer .nav.prev { left: 12px; }
 .viewer .nav.next { right: 12px; }
 
@@ -256,20 +343,24 @@ h3.hint { margin: 20px 4px 8px; font-size: 14px; color: var(--muted); font-weigh
 dialog {
   border: 0; border-radius: 28px; padding: 24px; background: var(--surface); color: var(--text);
   width: min(420px, calc(100vw - 32px)); box-shadow: var(--shadow);
+  overscroll-behavior: contain;
 }
-dialog::backdrop { background: var(--scrim); }
+dialog[open] { animation: pop-in var(--mid) var(--ease-out); }
+dialog::backdrop { background: var(--scrim); backdrop-filter: blur(2px); animation: fade var(--mid) ease-out; }
 dialog h3 { margin: 0 0 8px; font-size: 22px; }
 dialog p { color: var(--muted); margin: 0 0 16px; }
 dialog .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
 dialog .list { display: grid; gap: 4px; max-height: 50vh; overflow: auto; }
-dialog .list button { text-align: left; padding: 12px; border-radius: 12px; border: 0; background: none; }
+dialog .list button { text-align: left; padding: 12px; border-radius: 12px; border: 0; background: none; transition: background-color var(--fast); }
 dialog .list button:hover { background: var(--surface-2); }
 
 /* încărcarea */
 .drop {
   position: fixed; inset: 0; z-index: 60; background: color-mix(in srgb, var(--primary) 30%, transparent);
   display: grid; place-items: center; pointer-events: none; backdrop-filter: blur(3px);
+  animation: fade var(--fast) ease-out;
 }
+.drop div { animation: pop-in var(--mid) var(--ease-spring); }
 .drop div {
   background: var(--surface); padding: 32px 40px; border-radius: 28px; font-size: 20px; font-weight: 700;
   border: 3px dashed var(--primary); box-shadow: var(--shadow);
@@ -277,14 +368,16 @@ dialog .list button:hover { background: var(--surface-2); }
 .uploads {
   position: fixed; right: 16px; bottom: 16px; z-index: 40; width: min(380px, calc(100vw - 32px));
   background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+  animation: slide-up var(--slow) var(--ease-out);
 }
+.uploads .head small, .uploads li em { font-variant-numeric: tabular-nums; }
 .uploads .head { display: flex; align-items: center; gap: 8px; padding: 12px 8px 12px 16px; }
 .uploads .head div { flex: 1; }
 .uploads .head b { display: block; }
 .uploads .head small { color: var(--muted); }
 .uploads progress, .up progress { width: 100%; height: 6px; appearance: none; border: 0; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
 .uploads progress::-webkit-progress-bar { background: var(--surface-2); }
-.uploads progress::-webkit-progress-value { background: var(--primary); }
+.uploads progress::-webkit-progress-value { background: var(--primary); transition: inline-size var(--mid) var(--ease-out); }
 .uploads progress::-moz-progress-bar { background: var(--primary); }
 .uploads > progress { display: block; border-radius: 0; }
 .uploads ul { list-style: none; margin: 0; padding: 4px 0; max-height: 260px; overflow: auto; }
@@ -297,13 +390,30 @@ dialog .list button:hover { background: var(--surface-2); }
 
 .toast {
   position: fixed; left: 50%; bottom: 24px; translate: -50% 0; z-index: 70; background: var(--text); color: var(--bg);
-  padding: 12px 20px; border-radius: 12px; box-shadow: var(--shadow);
+  padding: 12px 20px; border-radius: 14px; box-shadow: var(--shadow); font-weight: 500;
+  animation: slide-up var(--mid) var(--ease-spring);
 }
 @media (max-width: 400px) {
   header.top { gap: 4px; }
   nav.tabs a { padding: 8px 7px; }
 }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* ---------- animații ---------- */
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } }
+@keyframes pop { from { opacity: 0; transform: scale(.6); } }
+@keyframes pop-in { from { opacity: 0; transform: scale(.96) translateY(-4px); } }
+@keyframes fade { from { opacity: 0; } }
+@keyframes slide-up { from { opacity: 0; transform: translateY(16px); } }
+@keyframes shimmer { to { background-position: -150% 0; } }
+
+/* View Transitions: miniatura crește în vizualizator; restul paginii se estompează scurt */
+::view-transition-group(foto) { animation-duration: 380ms; animation-timing-function: var(--ease-out); }
+::view-transition-old(foto), ::view-transition-new(foto) { height: 100%; object-fit: cover; overflow: clip; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 220ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
 h2.title .spacer { flex: 1; }
 h2.title .btn { font-size: 15px; }
 a.card, a.icon-btn { color: inherit; text-decoration: none; }
