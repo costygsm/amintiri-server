@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and help with installing
+    url: https://github.com/costygsm/amintiri-server/discussions
+    about: "\"Does it run on my NAS?\", \"How do I …?\" — ask here, so the issues stay for bugs."
+  - name: Private contact
+    url: mailto:office@servicegsm.eu
+    about: For anything you'd rather not post publicly.

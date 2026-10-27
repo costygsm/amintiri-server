@@ -1,0 +1,27 @@
+name: Suggestion
+description: An idea for a new feature or an improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      placeholder: "It would be nice if …"
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: How would it help you?
+      description: The situation where you missed it. This helps more than the solution itself.
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where?
+      multiple: true
+      options:
+        - Android app
+        - Web app (browser)
+        - Server / install

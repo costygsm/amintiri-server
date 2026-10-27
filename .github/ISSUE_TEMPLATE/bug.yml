@@ -1,0 +1,66 @@
+name: Bug report
+description: Something doesn't work as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time! Please don't paste passwords, tokens or your server's address.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: |
+        1. Opened the app and tapped …
+        2. Expected …
+        3. Instead …
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where?
+      multiple: true
+      options:
+        - Android app
+        - Web app (browser)
+        - Install / Container Manager
+        - Backup from the phone
+        - Sign-in
+    validations:
+      required: true
+  - type: input
+    id: server
+    attributes:
+      label: Server version
+      description: Open `https://<your-domain>/api/health` in a browser — it shows the version.
+      placeholder: "0.3.2"
+    validations:
+      required: true
+  - type: input
+    id: app
+    attributes:
+      label: Android app version
+      description: Settings → About. Leave empty if it's only about the web app.
+      placeholder: "0.8.9"
+  - type: input
+    id: nas
+    attributes:
+      label: NAS model and DSM version
+      placeholder: "DS920+, DSM 7.2.2"
+    validations:
+      required: true
+  - type: input
+    id: phone
+    attributes:
+      label: Phone and Android version
+      placeholder: "Pixel 8, Android 15"
+  - type: textarea
+    id: log
+    attributes:
+      label: Server log
+      description: |
+        The last lines of `data/erori.log` in the Amintiri project folder (File Station), or the container log
+        from Container Manager. For sign-in problems this usually shows the cause.
+      render: text
