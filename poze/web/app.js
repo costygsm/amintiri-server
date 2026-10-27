@@ -871,7 +871,7 @@ async function renderAlbums(token) {
       h('div', { class: 'cover' }, icon('archive')), h('b', {}, tr('Arhivă', 'Archive')), h('small', {}, tr('Ascunse din Poze', 'Hidden from Photos'))),
     albums.map((a) => h('a', { class: 'card', href: `#/album/${a.id}` },
       h('div', { class: 'cover' }, a.cover_id ? h('img', { src: thumb(a.cover_id, 1024), alt: '', loading: 'lazy' }) : icon('album')),
-      h('b', {}, a.shared ? h('span', { class: 'shared', title: tr('Album comun', 'Shared album') }, icon('people')) : null, a.name),
+      h('b', {}, (!a.mine || a.members?.length) ? h('span', { class: 'shared', title: tr('Album comun', 'Shared album') }, icon('people')) : null, a.name),
       h('small', {}, albumSub(a)))),
   );
   main.append(h('h2', { class: 'title' }, tr('Albume', 'Albums')), cards);

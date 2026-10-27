@@ -574,4 +574,4 @@ p.subtitle { margin: -8px 4px 16px; color: var(--muted); }
 .album-sub { display: block; margin: -8px 4px 14px; color: var(--muted); }
 dialog label.check { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; cursor: pointer; }
 dialog label.check:hover { background: var(--surface-2); }
-dialog label.check input { width: 18px; height: 18px; }
+dialog label.check input { width: 18px; height: 18px; accent-color: var(--primary); }

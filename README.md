@@ -1,46 +1,63 @@
 # Amintiri
 
-A lightweight photo server for **Synology NAS**, with an Android app — an alternative to Synology Photos
-that keeps your pictures as plain files in your own `Photos` folder.
-
-- **Uses your DSM accounts.** People sign in with their NAS user name and password (2-step verification
-  supported). No second user database.
-- **Your files stay yours.** Photos go to `homes/<user>/Photos/<year>/<month>/`, named by the date they
-  were taken. Stop using Amintiri tomorrow and nothing is locked in.
-- **Light.** One small container (Python + SQLite); runs fine on ARM models.
-- **Memories, like Google Photos:** "on this day" from past years at the top of the timeline, full-screen
-  stories on the phone and a morning notification. Synology Photos has nothing like this.
-- **Fast backup at home.** On your home Wi-Fi the phone uploads straight to the NAS, not through the
-  internet and Cloudflare — several times faster, see [Backup at home](#backup-at-home).
-- **Backup you can trust:** runs in the background and when you take a photo, optionally only while
-  charging; a notification if photos haven't been backed up for over a day, with the likely reason.
-- **Shared family albums.** Share an album with other NAS accounts: everyone sees it and adds their own
-  photos, while the rest of each person's library stays private.
-- **Rotate and archive.** Rotating never rewrites your original file; archived photos leave the timeline
-  and memories but stay in albums, favourites and search.
-- **Android app:** automatic backup (Wi-Fi or mobile data), timeline by day / month / year, albums,
-  places, "on this day" memories, search ("summer 2024", "august", a city), favourites,
-  30-day trash, free-up-space, share links for albums, fingerprint lock.
-- **Web app** in the browser: the same timeline, upload, albums, multi-select, search.
+A lightweight photo server for **Synology NAS**, with an Android app: Google Photos–style backup,
+memories and sharing for your family, while your pictures stay plain files in your own `Photos` folder.
 
 <p align="center">
   <img src="docs/screenshots/timeline.jpg" alt="Timeline with “On this day” memories" width="100%">
 </p>
 
+## What it does
+
+**Backup from the phone**
+- Automatic backup of the folders you choose, in the background and as soon as you take a photo;
+  on Wi-Fi only or on mobile data too, optionally only while charging.
+- **Fast at home:** on your home Wi-Fi the phone uploads straight to the NAS, not through the internet
+  and Cloudflare — on our network 1 → 8 MB/s, see [Backup at home](#backup-at-home).
+- **You know it works:** a notification if photos haven't been backed up for over a day, with the likely
+  reason; the screen can stay on during a big first backup and dims itself to a quiet progress view.
+- Free up space: delete from the phone what is already safe on the NAS.
+
+**Browsing**
+- Timeline by day / month / year, with a year scrubber on the web.
+- **Memories:** "on this day" from past years at the top, full-screen stories on the phone and a
+  morning notification.
+- **Places** from the photos' GPS, worked out offline on the NAS; **search** for "summer 2024",
+  "August", a city or an album name.
+- Favourites, rotate (your original file is never rewritten), **archive** (hide photos from the
+  timeline and memories; they stay in albums and search), 30-day trash.
+
+**Sharing**
+- **Shared family albums:** share an album with other NAS accounts; everyone sees it and adds their own
+  photos, while the rest of each person's library stays private.
+- Public links for an album, for people without an account; turn them off any time.
+
+**Your NAS, your rules**
+- Sign in with your **DSM accounts** (2-step verification supported). No second user database.
+- Photos are saved to `homes/<user>/Photos/<year>/<month>/`, named by the date they were taken.
+  Stop using Amintiri tomorrow and nothing is locked in.
+- **Light:** one small container (Python + SQLite); runs fine on ARM models.
+- Android app with fingerprint lock, and a web app in any browser.
+
+## Screenshots
+
 | | | |
 |---|---|---|
-| <img src="docs/screenshots/places.jpg" alt="Places"> | <img src="docs/screenshots/albums.jpg" alt="Albums"> | <img src="docs/screenshots/search.jpg" alt="Search for “summer 2026”"> |
-| **Places**, from the photos' GPS — offline, nothing leaves the NAS | **Albums**, shareable by link | **Search**: “summer 2026”, “August”, a city |
-| <img src="docs/screenshots/select.jpg" alt="Multi-select"> | <img src="docs/screenshots/viewer.jpg" alt="Viewer"> | <img src="docs/screenshots/timeline-dark.jpg" alt="Dark theme"> |
-| Select many, add to an album, download or delete | Full-screen viewer | Follows the system's dark theme |
+| <img src="docs/screenshots/albums.jpg" alt="Albums"> | <img src="docs/screenshots/shared-album.jpg" alt="A shared album"> | <img src="docs/screenshots/share.jpg" alt="Sharing an album with another account"> |
+| **Albums**, with Archive and shared albums | A **shared album**: everyone adds their own photos | **Share** with the people on your NAS |
+| <img src="docs/screenshots/places.jpg" alt="Places"> | <img src="docs/screenshots/search.jpg" alt="Search for “summer 2026”"> | <img src="docs/screenshots/select.jpg" alt="Multi-select"> |
+| **Places**, from the photos' GPS — offline | **Search**: “summer 2026”, “August”, a city | Select many: album, archive, download, delete |
+| <img src="docs/screenshots/viewer.jpg" alt="Viewer"> | <img src="docs/screenshots/timeline-dark.jpg" alt="Dark theme"> | |
+| Viewer: rotate, archive, add to an album | Follows the system's dark theme | |
 
 <p align="center">
-  <img src="docs/screenshots/phone-memory.jpg" alt="A memory in the Android app: 2 years ago" width="24%">
-  <img src="docs/screenshots/phone-timeline.jpg" alt="On a phone" width="24%">
-  <img src="docs/screenshots/phone-timeline-dark.jpg" alt="On a phone, dark theme" width="24%">
-  <img src="docs/screenshots/phone-places.jpg" alt="Places on a phone" width="24%">
+  <img src="docs/screenshots/phone-memory.jpg" alt="A memory in the Android app: 2 years ago" width="19%">
+  <img src="docs/screenshots/phone-upload.jpg" alt="The quiet upload screen in the Android app" width="19%">
+  <img src="docs/screenshots/phone-timeline.jpg" alt="On a phone" width="19%">
+  <img src="docs/screenshots/phone-timeline-dark.jpg" alt="On a phone, dark theme" width="19%">
+  <img src="docs/screenshots/phone-places.jpg" alt="Places on a phone" width="19%">
 </p>
-<p align="center"><sub>Left: a memory in the Android app. The others: the web app on a phone.</sub></p>
+<p align="center"><sub>Android app: a memory and the quiet upload screen. The others: the web app on a phone.</sub></p>
 
 <sub>Sample photos from <a href="https://unsplash.com">Unsplash</a> via <a href="https://picsum.photos">Lorem Picsum</a>; the memory is the author's own.</sub>
 
@@ -106,6 +123,9 @@ To turn it off, set `POZE_HOST: 127.0.0.1`; everything then goes through the dom
   makes thumbnails and keeps albums, favourites and the trash in `data/poze.db`.
 - A copy of the database is written every day to `data/backup/` (last 7 kept).
 - Uploads are resumable (8 MB chunks) and de-duplicated by SHA-256.
+- Rotation is stored in the database and applied to thumbnails; downloads give you the original file.
+- Shared albums only reference photos: each photo stays in its owner's folder, and leaving an album
+  takes your photos out of it.
 
 ## Data and privacy
 
