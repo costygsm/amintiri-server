@@ -10,6 +10,14 @@ that keeps your pictures as plain files in your own `Photos` folder.
 - **Light.** One small container (Python + SQLite); runs fine on ARM models.
 - **Memories, like Google Photos:** "on this day" from past years at the top of the timeline, full-screen
   stories on the phone and a morning notification. Synology Photos has nothing like this.
+- **Fast backup at home.** On your home Wi-Fi the phone uploads straight to the NAS, not through the
+  internet and Cloudflare — several times faster, see [Backup at home](#backup-at-home).
+- **Backup you can trust:** runs in the background and when you take a photo, optionally only while
+  charging; a notification if photos haven't been backed up for over a day, with the likely reason.
+- **Shared family albums.** Share an album with other NAS accounts: everyone sees it and adds their own
+  photos, while the rest of each person's library stays private.
+- **Rotate and archive.** Rotating never rewrites your original file; archived photos leave the timeline
+  and memories but stay in albums, favourites and search.
 - **Android app:** automatic backup (Wi-Fi or mobile data), timeline by day / month / year, albums,
   places, "on this day" memories, search ("summer 2024", "august", a city), favourites,
   30-day trash, free-up-space, share links for albums, fingerprint lock.
@@ -66,6 +74,30 @@ or `docker compose pull && docker compose up -d`.
 If the DSM firewall blocks by country and you use Cloudflare, allow the
 [Cloudflare IP ranges](https://www.cloudflare.com/ips-v4) on ports 80/443 above the deny rule —
 otherwise some visitors get error 522.
+
+## Backup at home
+
+Away from home the phone uploads through your domain (`https://photos.example.com`). At home that same
+path goes out to the internet and back — through Cloudflare, if you use it — which caps uploads at
+roughly the speed of your internet upload, often 1 MB/s.
+
+With `POZE_HOST: 0.0.0.0` (the default in [`docker-compose.yml`](docker-compose.yml)) the app notices it
+is on the same Wi-Fi as the NAS and sends photos **directly to the NAS's local address**
+(`http://192.168.x.x:8090`). On our network that took a phone from about 1 MB/s to 8 MB/s; the first
+backup of a full phone goes from days to hours. Nothing to set up in the app: it decides on its own,
+before every backup, and falls back to the domain as soon as you leave home.
+
+How it stays safe:
+
+- **The phone checks it's really your NAS** before sending the sign-in token to a local address: the NAS
+  must answer a one-time challenge with a key only it and your account know. A different device that
+  happens to have the same address on another Wi-Fi gets nothing.
+- **The local port answers only devices on your network** (private addresses: 192.168.x.x, 10.x.x.x,
+  172.16–31.x.x) and only the app's API; the web pages stay on the HTTPS domain.
+- The DSM firewall must allow your home network on port **8090** (e.g. *Allow — 192.168.0.0/24 — all ports*).
+  **Do not forward port 8090 on your router.**
+
+To turn it off, set `POZE_HOST: 127.0.0.1`; everything then goes through the domain, as before.
 
 ## How it works
 

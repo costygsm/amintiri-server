@@ -165,7 +165,8 @@ h2.title { font-size: 30px; font-weight: 750; margin: 24px 4px 14px; display: fl
 .empty strong { display: block; color: var(--text); font-size: 18px; margin-bottom: 4px; }
 
 /* amintiri */
-.memories { display: flex; gap: 14px; overflow-x: auto; padding: 12px 4px 12px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+/* scroll-padding: oprirea la început lasă loc inelului din jurul primei povești (altfel era tăiat) */
+.memories { display: flex; gap: 14px; overflow-x: auto; padding: 12px 4px 12px; scroll-snap-type: x mandatory; scroll-padding-inline: 8px; scrollbar-width: none; }
 .memories::-webkit-scrollbar { display: none; }
 /* ca poveștile: inel în culoarea aplicației, intră pe rând */
 .memory {
@@ -417,33 +418,73 @@ dialog .list button:hover { background: var(--surface-2); }
 ::view-transition-old(foto), ::view-transition-new(foto) { height: 100%; object-fit: cover; overflow: clip; }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 220ms; }
 
-/* bara din stânga (calculator): secțiuni, încărcare, filtru, spațiu, cont */
+/* bara din stânga (calculator), ca meniul din ServiceGSM: îngustă, cu iconițe; se deschide peste pagină
+   la hover sau din tastatură, iar pioneza (html[data-bara=fixa]) o ține deschisă și mută pagina după ea */
 .side { display: none; }
 @media (min-width: 1024px) {
   .side {
-    position: fixed; left: 0; top: 65px; bottom: 0; width: 240px; z-index: 9; overflow-y: auto;
-    display: flex; flex-direction: column; gap: 4px; padding: 12px 12px 12px;
+    position: fixed; left: 0; top: 65px; bottom: 0; width: 72px; z-index: 30;
+    overflow: hidden auto; scrollbar-width: none; overscroll-behavior: contain;
+    display: flex; flex-direction: column; gap: 2px; padding: 12px;
+    background: var(--bg); border-right: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+    transition: width var(--mid) var(--ease-out), box-shadow var(--mid) var(--ease-out);
   }
-  main { margin-left: 240px; max-width: none; }
+  .side::-webkit-scrollbar { display: none; }
+  .side:hover, .side:has(:focus-visible), html[data-bara="fixa"] .side { width: 248px; }
+  html:not([data-bara="fixa"]) .side:is(:hover, :has(:focus-visible)) { box-shadow: 0 16px 48px rgb(0 0 0 / .16); }
+  main { margin-left: 72px; max-width: none; transition: margin-left var(--mid) var(--ease-out); }
+  html[data-bara="fixa"] main { margin-left: 248px; }
   header.top nav.tabs { visibility: hidden; }
   header.top > .btn, header.top > .avatar, .toolbar .seg.kind { display: none; }
   .menu.from-side { left: 16px; right: auto; top: auto; bottom: 100px; position: fixed; transform-origin: bottom left; }
+  /* închisă: rămân doar iconițele, centrate; textele se sting, dar își păstrează locul (nimic nu sare) */
+  html:not([data-bara="fixa"]) .side:not(:hover):not(:has(:focus-visible))
+    :is(.side-link span, .side-upload span, .side-label, .side-who, .side-account .icon-btn, .side-copy, .storage) {
+    opacity: 0; pointer-events: none;
+  }
+}
+.side :is(.side-link span, .side-upload span, .side-label, .side-who, .side-account .icon-btn, .side-copy, .storage) {
+  transition: opacity var(--fast) var(--ease-out);
 }
 .side-link {
-  all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 14px; cursor: pointer;
-  height: 44px; padding: 0 16px; border-radius: 999px; color: var(--text); font-weight: 600; font-size: 15px;
-  transition: background-color var(--fast), color var(--fast);
+  all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 14px; cursor: pointer; flex: none;
+  height: 40px; padding: 0 13px; border-radius: 12px; white-space: nowrap; overflow: hidden;
+  color: var(--muted); font-weight: 550; font-size: 14px;
+  transition: background-color var(--fast), color var(--fast), box-shadow var(--fast);
 }
-.side-link .i { width: 22px; height: 22px; color: var(--muted); transition: color var(--fast); }
-.side-link:hover:not([aria-current]):not([aria-checked="true"]) { background: color-mix(in srgb, currentColor 7%, transparent); }
-.side-link:focus-visible { outline: 3px solid var(--primary); outline-offset: -3px; }
-.side-link[aria-current="page"], .side-link[aria-checked="true"] { background: var(--primary-soft); color: var(--on-primary-soft); }
-.side-link[aria-current="page"] .i, .side-link[aria-checked="true"] .i { color: var(--primary); }
-.side nav { display: flex; flex-direction: column; gap: 2px; }
-.side-upload { margin: 14px 4px 10px; height: 48px; justify-content: center; font-size: 15px; }
-.side-group { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, var(--line) 50%, transparent); }
-.side-group .side-link { height: 40px; font-size: 14px; }
-.side-label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 6px 16px; }
+.side-link .i { width: 22px; height: 22px; flex: none; transition: color var(--fast); }
+.side-link:hover:not([aria-current]):not([aria-checked="true"]) {
+  background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary);
+}
+.side-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* secțiunea deschisă: plină, în culoarea aplicației, ca linkul activ din ServiceGSM */
+.side-link[aria-current="page"] {
+  background: var(--primary); color: var(--on-primary); font-weight: 650;
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+/* filtrul ales: mai discret, ca să nu concureze cu secțiunea */
+.side-link[aria-checked="true"] { background: var(--primary-soft); color: var(--on-primary-soft); }
+.side-link[aria-checked="true"] .i { color: var(--primary); }
+.side nav { display: flex; flex-direction: column; gap: 4px; }
+.btn.side-upload {
+  flex: none; height: 44px; margin: 12px 0 10px; padding: 0 13px; gap: 14px; justify-content: flex-start;
+  border-radius: 12px; white-space: nowrap; overflow: hidden; font-size: 14px;
+}
+.btn.side-upload .i { flex: none; width: 22px; height: 22px; }
+/* tonal, nu plin: plină e doar secțiunea deschisă */
+.btn.side-upload { background: var(--primary-soft); color: var(--on-primary-soft); box-shadow: none; }
+.btn.side-upload:hover { background: color-mix(in srgb, var(--primary) 22%, var(--primary-soft)); }
+.btn.side-upload .i { color: var(--primary); }
+.side-group {
+  display: flex; flex-direction: column; gap: 2px; padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+}
+.side-group .side-link { height: 36px; font-size: 13.5px; }
+.side-group .side-link .i { width: 20px; height: 20px; margin: 0 1px; }
+.side-label {
+  font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+  padding: 2px 14px 6px; white-space: nowrap;
+}
 .side-fill { flex: 1; min-height: 12px; }
 .storage { padding: 12px 16px; border-radius: 16px; background: var(--surface-2); font-size: 13px; color: var(--muted); }
 .storage-title { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
@@ -455,15 +496,23 @@ dialog .list button:hover { background: var(--surface-2); }
 .meter b { background: var(--primary); }
 .storage-text { line-height: 1.5; font-variant-numeric: tabular-nums; }
 .menu .storage { margin: 4px 0 6px; }
-.side-account { display: flex; align-items: center; gap: 4px; margin-top: 10px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--line) 50%, transparent); }
-.side-me { all: unset; flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 14px; cursor: pointer; }
+/* spațiul NAS în bară: fără cutie, doar titlul, linia și cifrele */
+.side .storage { background: none; border-radius: 0; padding: 12px 6px 8px; min-width: 212px; flex: none; }
+.side .storage-title { font-size: 13px; margin-bottom: 8px; }
+.side-account {
+  display: flex; align-items: center; gap: 2px; margin-top: 6px; padding-top: 8px; flex: none; min-width: 224px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+}
+.side-account .icon-btn { width: 36px; height: 36px; flex: none; }
+.side-account .icon-btn[aria-pressed="true"] { color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, transparent); }
+.side-me { all: unset; flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 7px; border-radius: 12px; cursor: pointer; }
 .side-me:hover { background: color-mix(in srgb, currentColor 7%, transparent); }
 .side-me:focus-visible { outline: 3px solid var(--primary); }
 .avatar.small { width: 34px; height: 34px; flex: none; font-size: 15px; }
 .side-who { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
 .side-who small { color: var(--muted); font-size: 12px; }
 .side-who strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.side-copy { font-size: 11px; color: var(--muted); padding: 8px 8px 0; opacity: .8; }
+.side-copy { font-size: 11px; color: var(--muted); padding: 8px 8px 0; min-width: 208px; flex: none; }
 
 /* după un salt din bara cu anii, secțiunea nu rămâne sub antet */
 .day { scroll-margin-top: 72px; }
@@ -517,3 +566,12 @@ h2.title .spacer { flex: 1; }
 h2.title .btn { font-size: 15px; }
 a.card, a.icon-btn { color: inherit; text-decoration: none; }
 p.subtitle { margin: -8px 4px 16px; color: var(--muted); }
+
+/* albume comune */
+.card b .shared { display: inline-flex; vertical-align: -3px; margin-right: 6px; color: var(--primary); }
+.card b .shared svg, .btn .btn-icon svg { width: 18px; height: 18px; }
+.btn .btn-icon { display: inline-flex; margin-right: 6px; vertical-align: -3px; }
+.album-sub { display: block; margin: -8px 4px 14px; color: var(--muted); }
+dialog label.check { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; cursor: pointer; }
+dialog label.check:hover { background: var(--surface-2); }
+dialog label.check input { width: 18px; height: 18px; }

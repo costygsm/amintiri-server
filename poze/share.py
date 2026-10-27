@@ -11,14 +11,13 @@ from fastapi.responses import FileResponse, Response
 
 from . import thumbs
 from .auth import ApiError, current_user, get_db
-from .collections import ALBUM_NOT_FOUND, _album_json, _own
-from .library import NOT_FOUND, own_asset, paged
+from .collections import ALBUM_NOT_FOUND, _album_json, _own, in_album
+from .library import NOT_FOUND, paged
 from .users import safe_path
 
 router = APIRouter()
 WEB_DIR = Path(__file__).parent / "web"
 _TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{40,64}$")
-_IN_ALBUM = "AND sha256 IN (SELECT sha256 FROM album_items WHERE album_id=?)"
 GONE = "Linkul nu mai e valabil."
 
 
@@ -55,11 +54,13 @@ def _album(conn, token: str):
 
 
 def _member(conn, token: str, asset_id: int):
-    user, aid = _album(conn, token)
-    row = own_asset(conn, user, asset_id)
-    if conn.execute("SELECT 1 FROM album_items WHERE album_id=? AND sha256=?", (aid, row["sha256"])).fetchone() is None:
+    """Poza din albumul linkului, a oricui a pus-o acolo; (proprietarul pozei, rândul)."""
+    _user, aid = _album(conn, token)
+    row = conn.execute("SELECT a.* FROM assets a JOIN album_items i ON i.user=a.user AND i.sha256=a.sha256"
+                       " WHERE a.id=? AND a.deleted_at IS NULL AND i.album_id=?", (asset_id, aid)).fetchone()
+    if row is None:
         raise ApiError(404, NOT_FOUND)
-    return user, row
+    return row["user"], row
 
 
 @router.get("/api/public/{token}")
@@ -73,7 +74,7 @@ def public_album(token: str, conn: sqlite3.Connection = Depends(get_db)):
 def public_assets(token: str, before: str | None = None, limit: int = Query(200, ge=1, le=500),
                   conn: sqlite3.Connection = Depends(get_db)):
     user, aid = _album(conn, token)
-    page = paged(conn, user, before, limit, _IN_ALBUM, (aid,))
+    page = paged(conn, user, before, limit, scope=in_album(aid))
     # sursa (folderul de pe telefon) nu privește pe nimeni din afară
     return {"items": [{k: v for k, v in i.items() if k != "source"} for i in page["items"]], "next": page["next"]}
 

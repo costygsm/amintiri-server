@@ -52,6 +52,7 @@ const ICONS = {
   video: 'M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z',
   all: 'M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z',
   cloud: 'M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z',
+  pin: 'M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z',
   logout: 'M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z',
   upload: 'M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z',
   eye: 'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
@@ -60,8 +61,12 @@ const ICONS = {
   prev: 'M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z',
   next: 'M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z',
   download: 'M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z',
+  archive: 'M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z',
+  unarchive: 'M20.55 5.22l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.87.21-1.16.55L3.46 5.22C3.17 5.57 3 6.01 3 6.5V19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.49-.17-.93-.45-1.28zM12 9.5l5.5 5.5H14v2h-4v-2H6.5L12 9.5zM5.12 5l.82-1h12l.93 1H5.12z',
+  rotate: 'M15.55 5.55L11 1v3.07C7.06 4.56 4 7.92 4 12s3.05 7.44 7 7.93v-2.02c-2.84-.48-5-2.94-5-5.91s2.16-5.43 5-5.91V10l4.55-4.45zM19.93 11c-.17-1.39-.72-2.73-1.62-3.89l-1.42 1.42c.54.75.88 1.6 1.02 2.47h2.02zM13 17.9v2.02c1.39-.17 2.74-.71 3.9-1.61l-1.44-1.44c-.75.54-1.59.89-2.46 1.03zm3.89-2.42l1.42 1.41c.9-1.16 1.45-2.5 1.62-3.89h-2.02c-.14.87-.48 1.72-1.02 2.48z',
   delete: 'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
-  album: 'M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 15.01l1.41 1.41L11 14.84V19h2v-4.16l1.59 1.59L16 15.01 12.01 11z',
+  album: 'M22 16V4c0-1.1-.9-2-2-2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2zm-11-4l2.03 2.71L16 11l4 5H8l3-4zM2 6v14c0 1.1.9 2 2 2h14v-2H4V6H2z',
+  people: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
   addAlbum: 'M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9h-4v4h-2v-4H9V9h4V5h2v4h4v2z',
   play: 'M8 5v14l11-7z',
   back: 'M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z',
@@ -177,7 +182,8 @@ function fullDate(s) {
   const t = parseTaken(s);
   return `${dayMonth(t.d, t.m, t.y)}, ${String(t.hh).padStart(2, '0')}:${String(t.mm).padStart(2, '0')}`;
 }
-const thumb = (id, size = 256) => `/api/assets/${id}/thumb?size=${size}`;
+// [rot] intră în adresă: după o rotire, browserul nu mai arată miniatura veche din cache
+const thumb = (id, size = 256, rot = 0) => `/api/assets/${id}/thumb?size=${size}${rot ? `&r=${rot}` : ''}`;
 
 // ---------- API ----------
 class ApiError extends Error {
@@ -196,6 +202,11 @@ async function api(path, { method = 'GET', json, body, headers = {} } = {}) {
   if (!r.ok) throw new ApiError(r.status, data);
   return data;
 }
+
+// o eroare de la server pe care nu o tratează nimeni anume tot se vede, nu dispare în consolă
+window.addEventListener('unhandledrejection', (e) => {
+  if (e.reason instanceof ApiError && e.reason.status !== 401) toast(e.reason.message);
+});
 
 // ---------- starea ----------
 const state = { user: null, albums: null };
@@ -273,6 +284,7 @@ const ROUTES = [
   { re: /^#?\/?$/, tab: 'poze', render: renderTimeline },
   { re: /^#\/albume$/, tab: 'albume', render: renderAlbums },
   { re: /^#\/album\/(\d+)$/, tab: 'albume', render: renderAlbum },
+  { re: /^#\/arhiva$/, tab: 'albume', render: renderArchive },
   { re: /^#\/locuri$/, tab: 'locuri', render: renderPlaces },
   { re: /^#\/loc\/(\d+)$/, tab: 'locuri', render: renderPlace },
   { re: /^#\/cauta(?:\/(.+))?$/, tab: null, render: renderSearch },
@@ -353,9 +365,19 @@ function startApp() {
       if ((location.hash || '#/') === '#/') route(); else location.hash = '#/';
     },
   }, icon({ '': 'all', photo: 'photo', video: 'video' }[k]), h('span', {}, name)));
+  // bara se deschide peste pagină când treci cu mouse-ul; pioneza o ține deschisă (și pagina se mută după ea)
+  const pinned = () => document.documentElement.dataset.bara === 'fixa';
+  const pin = iconBtn('pin', tr('Ține bara deschisă', 'Keep the sidebar open'), () => {
+    const on = !pinned();
+    document.documentElement.dataset.bara = on ? 'fixa' : '';
+    pin.setAttribute('aria-pressed', String(on));
+    setPref('bara', on ? 'fixa' : '');
+  });
+  document.documentElement.dataset.bara = getPref('bara', { fixa: 1, '': 1 }, '');
+  pin.setAttribute('aria-pressed', String(pinned()));
   const side = h('aside', { class: 'side', 'aria-label': tr('Meniu', 'Menu') },
     h('nav', { 'aria-label': tr('Secțiuni', 'Sections') }, Object.values(navLinks).map((l) => l[1])),
-    h('button', { class: 'btn side-upload', type: 'button', onclick: () => picker.click() }, icon('upload'), tr('Încarcă', 'Upload')),
+    h('button', { class: 'btn side-upload', type: 'button', onclick: () => picker.click() }, icon('upload'), h('span', {}, tr('Încarcă', 'Upload'))),
     h('div', { class: 'side-group', role: 'radiogroup', 'aria-label': tr('Arată', 'Show') },
       h('div', { class: 'side-label' }, tr('Arată', 'Show')), kindButtons),
     h('div', { class: 'side-fill' }),
@@ -365,7 +387,7 @@ function startApp() {
         onclick: (e) => toggleMenu(e, true) },
         h('span', { class: 'avatar small', 'aria-hidden': 'true' }, (state.user || '?')[0].toUpperCase()),
         h('span', { class: 'side-who' }, h('small', {}, tr('Conectat ca', 'Signed in as')), h('strong', {}, state.user))),
-      iconBtn('logout', tr('Ieși din cont', 'Sign out'), signOut)),
+      pin, iconBtn('logout', tr('Ieși din cont', 'Sign out'), signOut)),
     h('div', { class: 'side-copy' }, COPYRIGHT));
   $app().replaceChildren(header, side, main);
   route();
@@ -485,7 +507,7 @@ function photoFeed(container, url, token, { emptyText = tr('Nicio poză încă.'
     onItems?.(items);
   }
   function makeTile(a, seq) {
-    const img = h('img', { alt: '', 'data-src': thumb(a.id), decoding: 'async', onload() { this.classList.add('on'); lazy.unobserve(this); } });
+    const img = h('img', { alt: '', 'data-src': thumb(a.id, 256, a.rotation), decoding: 'async', onload() { this.classList.add('on'); lazy.unobserve(this); } });
     lazy.observe(img);
     const what = a.kind === 'video' ? tr('Clip', 'Video') : tr('Poză', 'Photo');
     const from = `${what} ${tr('din', 'from')} ${fullDate(a.taken_at)}`;
@@ -587,6 +609,7 @@ function photoFeed(container, url, token, { emptyText = tr('Nicio poză încă.'
   }
   const count = h('strong', {});
   const inAlbum = location.hash.startsWith('#/album/') ? viewerAlbum : null;
+  const inArchive = location.hash === '#/arhiva';
   const picked = () => [...selected].sort((x, y) => x - y).map((k) => bySeq.get(k).a);
   const bar = h('div', { class: 'selbar', role: 'toolbar', 'aria-label': tr('Pozele alese', 'Selected photos') },
     iconBtn('close', tr('Renunță (Esc)', 'Cancel (Esc)'), clear), count, h('span', { class: 'spacer' }),
@@ -599,6 +622,18 @@ function photoFeed(container, url, token, { emptyText = tr('Nicio poză încă.'
         document.body.append(link); link.click(); link.remove();
       }, n * 400));
       toast(`${tr('Se descarcă', 'Downloading')} ${plural(list.length, 'fișier', 'fișiere', 'file', 'files')}`);
+    }),
+    // arhiva: scoase din cronologie, rămân în albume; în Arhivă, butonul le scoate de acolo
+    inArchive ? iconBtn('unarchive', tr('Scoate din arhivă', 'Unarchive'), async () => {
+      const list = picked();
+      await api('/api/archive', { method: 'DELETE', json: { sha256: list.map((a) => a.sha256) } });
+      toast(`${plural(list.length, 'poză scoasă', 'poze scoase', 'photo', 'photos')} ${tr('din arhivă', 'unarchived')}`);
+      refresh();
+    }) : iconBtn('archive', tr('Arhivează', 'Archive'), async () => {
+      const list = picked();
+      await api('/api/archive', { method: 'POST', json: { sha256: list.map((a) => a.sha256) } });
+      toast(`${plural(list.length, 'poză arhivată', 'poze arhivate', 'photo archived', 'photos archived')}. ${tr('Le găsești în Albume › Arhivă.', 'Find them in Albums › Archive.')}`);
+      refresh();
     }),
     inAlbum ? iconBtn('remove', tr('Scoate din album', 'Remove from album'), async () => {
       const list = picked();
@@ -832,11 +867,69 @@ async function renderAlbums(token) {
   const cards = h('div', { class: 'cards' },
     h('button', { class: 'card new', type: 'button', onclick: () => newAlbum() },
       h('div', { class: 'cover' }, icon('addAlbum')), h('b', {}, tr('Album nou', 'New album'))),
+    h('a', { class: 'card new', href: '#/arhiva' },
+      h('div', { class: 'cover' }, icon('archive')), h('b', {}, tr('Arhivă', 'Archive')), h('small', {}, tr('Ascunse din Poze', 'Hidden from Photos'))),
     albums.map((a) => h('a', { class: 'card', href: `#/album/${a.id}` },
       h('div', { class: 'cover' }, a.cover_id ? h('img', { src: thumb(a.cover_id, 1024), alt: '', loading: 'lazy' }) : icon('album')),
-      h('b', {}, a.name), h('small', {}, plural(a.count, 'element', 'elemente', 'item', 'items')))),
+      h('b', {}, a.shared ? h('span', { class: 'shared', title: tr('Album comun', 'Shared album') }, icon('people')) : null, a.name),
+      h('small', {}, albumSub(a)))),
   );
   main.append(h('h2', { class: 'title' }, tr('Albume', 'Albums')), cards);
+}
+
+/** „12 elemente”, „12 elemente · comun cu dana”, „12 elemente · de la ana”. */
+function albumSub(a) {
+  const n = plural(a.count, 'element', 'elemente', 'item', 'items');
+  if (!a.mine && a.owner) return `${n} · ${tr('de la', 'from')} ${a.owner}`;
+  if (a.members && a.members.length) return `${n} · ${tr('comun cu', 'shared with')} ${a.members.join(', ')}`;
+  return n;
+}
+
+/** Albume comune: proprietarul bifează conturile care văd albumul și pot pune poze în el. */
+async function shareAlbum(album) {
+  const { people } = await api('/api/people');
+  const members = new Set(album.members || []);
+  await dialog((done) => [
+    h('h3', {}, tr(`Împarte „${album.name}”`, `Share "${album.name}"`)),
+    h('p', {}, tr('Cei bifați văd albumul și pot pune pozele lor în el. Restul pozelor tale rămân doar ale tale.',
+      'People you tick see the album and can add their own photos. The rest of your photos stay private.')),
+    people.length ? h('div', { class: 'list' }, people.map((p) => {
+      const box = h('input', { type: 'checkbox', checked: members.has(p) ? '' : null, async onchange() {
+        // scos din album, pleacă și pozele pe care le-a pus el: întrebăm întâi
+        if (!box.checked && !await confirmBox(tr(`Îl scoți pe ${p}?`, `Remove ${p}?`),
+          tr('Nu mai vede albumul, iar pozele puse de el ies din album. Rămân în pozele lui.',
+            'They won\'t see the album any more and the photos they added leave it. They stay in their own photos.'),
+          tr('Scoate', 'Remove'))) { box.checked = true; return; }
+        box.disabled = true;
+        try {
+          if (box.checked) await api(`/api/albums/${album.id}/members`, { method: 'POST', json: { user: p } });
+          else await api(`/api/albums/${album.id}/members/${encodeURIComponent(p)}`, { method: 'DELETE' });
+          if (box.checked) members.add(p); else members.delete(p);
+        } catch (e) { box.checked = !box.checked; toast(e.message); }
+        box.disabled = false;
+      } });
+      return h('label', { class: 'check' }, box, h('span', {}, p));
+    })) : h('p', { class: 'hint' }, tr('Încă nu e nimeni. Apar aici conturile de pe NAS care au intrat măcar o dată în Amintiri.',
+      'Nobody yet. NAS accounts show up here once they have signed in to Amintiri.')),
+    h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', onclick: () => done(true) }, tr('Gata', 'Done'))),
+  ]);
+  album.members = [...members].sort();
+  state.albums = null;
+}
+
+async function renderArchive(token) {
+  document.title = `${tr('Arhivă', 'Archive')} · Amintiri`;
+  main.append(h('h2', { class: 'title' },
+    h('a', { href: '#/albume', class: 'icon-btn', 'aria-label': tr('Înapoi la albume', 'Back to albums') }, icon('back')),
+    tr('Arhivă', 'Archive')),
+  h('small', { class: 'album-sub' }, tr('Pozele ascunse din Poze. Rămân în albume, la favorite și în căutare.',
+    'Photos hidden from Photos. They stay in albums, favourites and search.')));
+  const feed = h('div');
+  main.append(feed);
+  photoFeed(feed, '/api/archive/assets', token, {
+    emptyText: tr('Arhiva e goală.', 'The archive is empty.'),
+    emptyHint: tr('Deschide o poză și apasă cutia, sau alege mai multe și arhivează-le.', 'Open a photo and press the box, or select several and archive them.'),
+  });
 }
 
 async function newAlbum(sha256 = []) {
@@ -854,9 +947,23 @@ async function renderAlbum(token, id) {
   if (!album) { location.hash = '#/albume'; return; }
   document.title = `${album.name} · Amintiri`;
   const title = h('span', {}, album.name);
+  const sub = h('small', { class: 'album-sub' }, albumSub(album));
+  // un membru doar vede, pune poze și poate pleca; restul e al proprietarului
+  const leave = h('button', { class: 'btn danger', type: 'button', async onclick() {
+    if (!await confirmBox(tr('Părăsești albumul?', 'Leave the album?'), tr('Nu-l mai vezi, iar pozele puse de tine ies din el.',
+      'You won\'t see it any more and the photos you added leave it.'), tr('Părăsește', 'Leave'))) return;
+    await api(`/api/albums/${album.id}/members/${encodeURIComponent(state.user)}`, { method: 'DELETE' });
+    state.albums = null;
+    location.hash = '#/albume';
+  } }, tr('Părăsește', 'Leave'));
   main.append(h('h2', { class: 'title' },
     h('a', { href: '#/albume', class: 'icon-btn', 'aria-label': tr('Înapoi la albume', 'Back to albums') }, icon('back')), title,
     h('span', { class: 'spacer' }),
+    ...(album.mine === false ? [leave] : [
+    h('button', { class: 'btn text', type: 'button', async onclick() {
+      await shareAlbum(album);
+      sub.textContent = albumSub(album);
+    } }, h('span', { class: 'btn-icon' }, icon('people')), tr('Împarte', 'Share')),
     h('button', { class: 'btn text', type: 'button', async onclick() {
       const name = await promptText(tr('Redenumește albumul', 'Rename album'), tr('Numele albumului', 'Album name'), album.name);
       if (!name || name === album.name) return;
@@ -869,8 +976,8 @@ async function renderAlbum(token, id) {
       await api(`/api/albums/${album.id}`, { method: 'DELETE' });
       state.albums = null;
       location.hash = '#/albume';
-    } }, tr('Șterge', 'Delete')),
-  ));
+    } }, tr('Șterge', 'Delete'))]),
+  ), sub);
   const feed = h('div');
   main.append(feed);
   photoFeed(feed, `/api/albums/${album.id}/assets`, token, { emptyText: tr('Albumul e gol. Adaugă poze din vizualizator.', 'The album is empty. Add photos from the viewer.') });
@@ -956,6 +1063,13 @@ async function pickAlbum(shas) {
 let viewerAlbum = null;  // albumul deschis, pentru „Scoate din album”
 function openViewer(items, start, { onChange, thumbOf } = {}) {
   const inAlbum = location.hash.startsWith('#/album/') ? viewerAlbum : null;
+  const inArchive = location.hash === '#/arhiva';
+  // rotirea ține de poză (doar pozele, nu clipurile); fișierul de pe NAS rămâne neatins
+  const rotBtn = iconBtn('rotate', tr('Rotește la dreapta', 'Rotate right'), async () => {
+    const a = await api(`/api/assets/${items[i].id}/rotate`, { method: 'POST', json: { degrees: 90 } });
+    items[i] = { ...items[i], ...a };
+    changed = true; show();
+  });
   let i = start;
   let changed = false;
   const before = document.activeElement;
@@ -973,6 +1087,14 @@ function openViewer(items, start, { onChange, thumbOf } = {}) {
         await api(`/api/albums/${inAlbum.id}/items`, { method: 'DELETE', json: { sha256: [items[i].sha256] } });
         changed = true; state.albums = null; drop(); toast(tr('Scoasă din album', 'Removed from album'));
       }) : null,
+      rotBtn,
+      inArchive ? iconBtn('unarchive', tr('Scoate din arhivă', 'Unarchive'), async () => {
+        await api('/api/archive', { method: 'DELETE', json: { sha256: [items[i].sha256] } });
+        changed = true; drop(); toast(tr('Scoasă din arhivă', 'Unarchived'));
+      }) : iconBtn('archive', tr('Arhivează', 'Archive'), async () => {
+        await api('/api/archive', { method: 'POST', json: { sha256: [items[i].sha256] } });
+        changed = true; drop(); toast(tr('Arhivată. O găsești în Albume › Arhivă.', 'Archived. Find it in Albums › Archive.'));
+      }),
       dl,
       iconBtn('delete', tr('Șterge de pe NAS', 'Delete from the NAS'), async () => {
         if (!await confirmBox(tr('Ștergi de pe NAS?', 'Delete from the NAS?'), tr('Ajunge în coșul de reciclare al NAS-ului, de unde o poți recupera.',
@@ -993,13 +1115,14 @@ function openViewer(items, start, { onChange, thumbOf } = {}) {
     const original = `/api/assets/${a.id}/original`;
     stage.replaceChildren(a.kind === 'video'
       ? h('video', { src: original, controls: true, autoplay: true, playsinline: true, poster: thumb(a.id, 1024) })
-      : h('img', { src: thumb(a.id, 1024), alt: `${tr('Poză din', 'Photo from')} ${fullDate(a.taken_at)}` }));
+      : h('img', { src: thumb(a.id, 1024, a.rotation), alt: `${tr('Poză din', 'Photo from')} ${fullDate(a.taken_at)}` }));
     when.replaceChildren(h('b', {}, fullDate(a.taken_at)), h('small', {}, `${i + 1} ${tr('din', 'of')} ${items.length}`));
     dl.href = original;
+    rotBtn.classList.toggle('hidden', a.kind !== 'photo');
     prevBtn.classList.toggle('hidden', i === 0);
     nextBtn.classList.toggle('hidden', i === items.length - 1);
     // următoarea se încarcă dinainte, ca trecerea să fie instantă
-    if (items[i + 1]?.kind === 'photo') new Image().src = thumb(items[i + 1].id, 1024);
+    if (items[i + 1]?.kind === 'photo') new Image().src = thumb(items[i + 1].id, 1024, items[i + 1].rotation);
   }
   function go(d) { const n = i + d; if (n >= 0 && n < items.length) { i = n; show(); } }
   function key(e) {

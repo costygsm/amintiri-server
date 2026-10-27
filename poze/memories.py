@@ -47,8 +47,9 @@ def on_this_day(conn, user: str, day: date) -> list[dict]:
     where = " OR ".join("taken_at BETWEEN ? AND ?" for _ in windows)
     params = [v for _, lo, hi in windows for v in (f"{lo} 00:00:00", f"{hi} 23:59:59")]
     rows = conn.execute(
-        f"SELECT * FROM assets WHERE user=? AND deleted_at IS NULL AND ({where}) ORDER BY taken_at, id",
-        (user, *params)).fetchall()
+        f"SELECT * FROM assets WHERE user=? AND deleted_at IS NULL AND ({where})"
+        " AND sha256 NOT IN (SELECT sha256 FROM archive WHERE user=?) ORDER BY taken_at, id",
+        (user, *params, user)).fetchall()
     seen: set[str] = set()
     by_year: dict[int, list] = {}
     prev: dict[int, datetime] = {}

@@ -30,6 +30,9 @@ EN = {
     "Introdu codul din aplicația de autentificare.": "Enter the code from your authenticator app.",
     "Cod greșit.": "Wrong code.",
     "Albumul nu există.": "This album doesn't exist.",
+    "Poți scoate doar pozele puse de tine.": "You can only remove the photos you added.",
+    "Proprietarul nu poate pleca din album; îl poate șterge.": "The owner can't leave the album; they can delete it.",
+    "Contul nu există sau n-a intrat încă în Amintiri.": "That account doesn't exist or hasn't signed in to Amintiri yet.",
     "Eroare pe server. Încearcă din nou peste un minut.": "Server error. Try again in a minute.",
 }
 

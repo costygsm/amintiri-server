@@ -25,7 +25,11 @@ CREATE TABLE IF NOT EXISTS album_links(
 CREATE TABLE IF NOT EXISTS albums(
   id INTEGER PRIMARY KEY, user TEXT, name TEXT, created_at TEXT);
 CREATE TABLE IF NOT EXISTS album_items(
-  album_id INT, sha256 TEXT, added_at TEXT, PRIMARY KEY(album_id, sha256));
+  album_id INT, sha256 TEXT, added_at TEXT, user TEXT, PRIMARY KEY(album_id, user, sha256));
+CREATE TABLE IF NOT EXISTS archive(
+  user TEXT, sha256 TEXT, added_at TEXT, PRIMARY KEY(user, sha256));
+CREATE TABLE IF NOT EXISTS album_members(
+  album_id INT, user TEXT, added_at TEXT, PRIMARY KEY(album_id, user));
 CREATE TABLE IF NOT EXISTS trash(
   id INTEGER PRIMARY KEY, user TEXT, asset_id INT, trash_relpath TEXT,
   orig_relpath TEXT, deleted_at TEXT);
@@ -44,7 +48,9 @@ def connect(data_dir: Path) -> sqlite3.Connection:
 
 
 # coloane adăugate după prima versiune; o bază veche le primește la pornire
-_COLUMNS = {"lat": "REAL", "lon": "REAL", "place_id": "INT", "geo_done": "INT NOT NULL DEFAULT 0"}
+_COLUMNS = {"lat": "REAL", "lon": "REAL", "place_id": "INT", "geo_done": "INT NOT NULL DEFAULT 0",
+            # rotirea cerută din aplicație (0/90/180/270, în sensul acelor); fișierul de pe NAS rămâne neatins
+            "rotation": "INT NOT NULL DEFAULT 0"}
 
 
 def _migrate(conn) -> None:
@@ -54,11 +60,26 @@ def _migrate(conn) -> None:
             conn.execute(f"ALTER TABLE assets ADD COLUMN {name} {decl}")
     if "web" not in {r[1] for r in conn.execute("PRAGMA table_info(tokens)")}:
         conn.execute("ALTER TABLE tokens ADD COLUMN web INT NOT NULL DEFAULT 0")  # sesiune de browser
+    if "user" not in {r[1] for r in conn.execute("PRAGMA table_info(album_items)")}:
+        # albume comune: fiecare poză din album e a cuiva (cele vechi, ale proprietarului albumului),
+        # iar aceeași poză poate fi pusă de doi oameni: cheia cuprinde și contul
+        conn.executescript("""
+            ALTER TABLE album_items RENAME TO album_items_vechi;
+            CREATE TABLE album_items(
+              album_id INT, sha256 TEXT, added_at TEXT, user TEXT, PRIMARY KEY(album_id, user, sha256));
+            INSERT INTO album_items SELECT i.album_id, i.sha256, i.added_at, a.user
+              FROM album_items_vechi i JOIN albums a ON a.id=i.album_id;
+            DROP TABLE album_items_vechi;
+        """)
     conn.execute("CREATE INDEX IF NOT EXISTS assets_place ON assets(user, place_id)")
     conn.commit()
 
 
 def asset_json(row) -> dict:
     """Forma `Asset` din contractul API."""
-    return {k: row[k] for k in ("id", "sha256", "taken_at", "kind", "width", "height",
-                                "duration_ms", "source")}
+    a = {k: row[k] for k in ("id", "sha256", "taken_at", "kind", "width", "height", "duration_ms", "source")}
+    # rotită cu un sfert: grila o așază deja în picioare / culcată
+    a["rotation"] = row["rotation"]
+    if row["rotation"] in (90, 270):
+        a["width"], a["height"] = a["height"], a["width"]
+    return a

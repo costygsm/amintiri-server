@@ -26,9 +26,14 @@ def _video_frame(src: Path, out: Path) -> None:
     raise RuntimeError(f"niciun cadru din {src}")
 
 
+def cache_path(asset, size: int) -> Path:
+    """Aceeași amprentă poate fi rotită altfel la alt cont: rotirea face parte din nume."""
+    sha, rot = asset["sha256"], asset["rotation"]
+    return get_settings().data_dir / "thumbs" / sha[:2] / (f"{sha}_{size}_r{rot}.jpg" if rot else f"{sha}_{size}.jpg")
+
+
 def thumbnail(asset, size: int) -> Path:
-    sha = asset["sha256"]
-    cache = get_settings().data_dir / "thumbs" / sha[:2] / f"{sha}_{size}.jpg"
+    cache = cache_path(asset, size)
     if cache.exists():
         return cache
     cache.parent.mkdir(parents=True, exist_ok=True)
@@ -42,6 +47,8 @@ def thumbnail(asset, size: int) -> Path:
             src = frame
         with Image.open(src) as img:
             img = ImageOps.exif_transpose(img)
+            if asset["rotation"]:
+                img = img.rotate(-asset["rotation"], expand=True)  # PIL rotește invers acelor
             img.thumbnail((size, size))
             img.convert("RGB").save(tmp, "JPEG", quality=QUALITY)
         os.replace(tmp, cache)
@@ -59,13 +66,11 @@ def warm(conn, size: int = 256, limit: int = 3000) -> int:
     Cel mult `limit` pe tură, ca indexarea pozelor noi să nu aștepte ore la prima pornire.
     Întoarce câte a făcut."""
     made = tried = 0
-    root = get_settings().data_dir / "thumbs"
     rows = conn.execute("SELECT * FROM assets WHERE deleted_at IS NULL ORDER BY taken_at DESC").fetchall()
     for asset in rows:
         if tried >= limit:  # și cele care nu se pot face consumă din tură
             break
-        sha = asset["sha256"]
-        if (root / sha[:2] / f"{sha}_{size}.jpg").exists():
+        if cache_path(asset, size).exists():
             continue
         tried += 1
         try:

@@ -10,6 +10,8 @@ services:
     environment:
       POZE_HOMES_ROOT: /volume1/homes      # where DSM keeps user home folders
       POZE_PORT: 8090                      # point the DSM reverse proxy here
+      POZE_HOST: 0.0.0.0                   # fast backup at home: phones on the same Wi-Fi upload straight to the NAS
+                                           # (only private addresses are answered; use 127.0.0.1 to turn it off)
       POZE_DSM_URL: http://127.0.0.1:5000  # DSM's own HTTP port, local only
       TZ: Europe/Bucharest                 # for photos whose EXIF has no time zone
     volumes:

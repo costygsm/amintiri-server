@@ -43,7 +43,7 @@ def test_timeline_one_row_per_sha(client, env):
     scan(env)
     items = client.get("/api/assets", headers=headers(env)).json()["items"]
     assert len(items) == 1
-    assert set(items[0]) == {"id", "sha256", "taken_at", "kind", "width", "height", "duration_ms", "source"}
+    assert set(items[0]) == {"id", "sha256", "taken_at", "kind", "width", "height", "duration_ms", "source", "rotation"}
 
 
 def test_timeline_order_and_cursor(client, env):

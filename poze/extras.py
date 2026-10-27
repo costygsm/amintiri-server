@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from . import i18n, naming, thumbs, trash, users
 from .geo import english
 from .auth import ApiError, current_user, get_db
-from .library import NOT_FOUND, own_asset, paged
+from .library import NOT_FOUND, VISIBLE_ALBUMS, paged, visible_asset
 from .metadata import FMT, TZ
 
 log = logging.getLogger(__name__)
@@ -65,6 +65,38 @@ def remove_favorite(sha: str, user: str = Depends(current_user), conn: sqlite3.C
     return Response(status_code=204)
 
 
+# ---------- arhiva: pozele scoase din cronologie (rămân în albume, favorite, căutare) ----------
+class Shas(BaseModel):
+    sha256: list[str] = Field(max_length=5000)
+
+
+@router.get("/api/archive/assets")
+def archive_assets(before: str | None = None, limit: int = Query(200, ge=1, le=500),
+                   user: str = Depends(current_user), conn: sqlite3.Connection = Depends(get_db)):
+    return paged(conn, user, before, limit, "AND sha256 IN (SELECT sha256 FROM archive WHERE user=?)", (user,))
+
+
+@router.post("/api/archive")
+def archive(body: Shas, user: str = Depends(current_user), conn: sqlite3.Connection = Depends(get_db)):
+    # doar amprentele pozelor lui
+    now = _now()
+    for i in range(0, len(body.sha256), 500):
+        chunk = body.sha256[i:i + 500]
+        conn.execute(f"INSERT OR IGNORE INTO archive(user, sha256, added_at) SELECT ?, sha256, ? FROM ({_LIVE})"
+                     f" WHERE sha256 IN ({','.join('?' * len(chunk))})", (user, now, user, *chunk))
+    conn.commit()
+    return {"ok": True}
+
+
+@router.delete("/api/archive")
+def unarchive(body: Shas, user: str = Depends(current_user), conn: sqlite3.Connection = Depends(get_db)):
+    for i in range(0, len(body.sha256), 500):
+        chunk = body.sha256[i:i + 500]
+        conn.execute(f"DELETE FROM archive WHERE user=? AND sha256 IN ({','.join('?' * len(chunk))})", (user, *chunk))
+    conn.commit()
+    return {"ok": True}
+
+
 # ---------- detalii ----------
 def camera_of(path: Path) -> str | None:
     """„Samsung SM-S918B” din EXIF; None la clipuri sau fără EXIF."""
@@ -84,12 +116,12 @@ def camera_of(path: Path) -> str | None:
 
 @router.get("/api/assets/{asset_id}/info")
 async def info(asset_id: int, req: Request, user: str = Depends(current_user), conn: sqlite3.Connection = Depends(get_db)):
-    row = await run_in_threadpool(own_asset, conn, user, asset_id)
+    row = await run_in_threadpool(visible_asset, conn, user, asset_id)
     rel = Path(row["relpath"])
     camera = None
     if row["kind"] == "photo":
         try:
-            camera = await run_in_threadpool(camera_of, users.safe_path(user, row["relpath"]))
+            camera = await run_in_threadpool(camera_of, users.safe_path(row["user"], row["relpath"]))
         except ValueError:
             pass
     place = None
@@ -98,8 +130,9 @@ async def info(asset_id: int, req: Request, user: str = Depends(current_user), c
         if p:
             place = {"id": p["id"], **i18n.place(p, req)}
     fav = conn.execute("SELECT 1 FROM favorites WHERE user=? AND sha256=?", (user, row["sha256"])).fetchone()
-    albums = conn.execute("SELECT a.id, a.name FROM albums a JOIN album_items i ON i.album_id=a.id"
-                          " WHERE a.user=? AND i.sha256=? ORDER BY a.name", (user, row["sha256"])).fetchall()
+    albums = conn.execute("SELECT DISTINCT a.id, a.name FROM albums a JOIN album_items i ON i.album_id=a.id"
+                          f" WHERE a.id IN ({VISIBLE_ALBUMS}) AND i.sha256=? ORDER BY a.name",
+                          (user, user, row["sha256"])).fetchall()
     return {
         "id": row["id"], "filename": rel.name, "folder": "" if str(rel.parent) == "." else str(rel.parent),
         "size": row["size"], "width": row["width"], "height": row["height"], "duration_ms": row["duration_ms"],
@@ -247,11 +280,12 @@ async def trash_thumb(asset_id: int, size: int = 256, user: str = Depends(curren
                       conn: sqlite3.Connection = Depends(get_db)):
     if size not in thumbs.SIZES:
         raise ApiError(422, "Cerere invalidă.")
-    r = conn.execute("SELECT t.trash_relpath, a.sha256, a.kind FROM trash t JOIN assets a ON a.id=t.asset_id"
+    r = conn.execute("SELECT t.trash_relpath, a.sha256, a.kind, a.rotation FROM trash t JOIN assets a ON a.id=t.asset_id"
                      " WHERE t.user=? AND t.asset_id=? AND a.deleted_at IS NOT NULL", (user, asset_id)).fetchone()
     if r is None or not r["trash_relpath"]:
         raise ApiError(404, NOT_FOUND)
-    fake = {"sha256": r["sha256"], "user": user, "relpath": r["trash_relpath"], "kind": r["kind"]}
+    fake = {"sha256": r["sha256"], "user": user, "relpath": r["trash_relpath"], "kind": r["kind"],
+            "rotation": r["rotation"]}
     try:
         path = await run_in_threadpool(thumbs.thumbnail, fake, size)
     except Exception as e:
