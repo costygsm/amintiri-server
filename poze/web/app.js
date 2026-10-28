@@ -357,7 +357,8 @@ function startApp() {
     if (menu) { menu.remove(); menu = null; return; }
     menu = h('div', { class: `menu${fromSide ? ' from-side' : ''}`, role: 'menu' },
       h('div', { class: 'who' }, `${tr('Conectat ca', 'Signed in as')} ${state.user}`),
-      h('a', { class: 'btn text', role: 'menuitem', href: '#/import' }, icon('cloud'), tr('Import din Google Photos', 'Import from Google Photos')),
+      // pe calculator importul e deja în bara din stânga; în meniu rămâne doar pe telefon, unde bara lipsește
+      fromSide ? null : h('a', { class: 'btn text', role: 'menuitem', href: '#/import' }, icon('cloud'), tr('Import din Google Photos', 'Import from Google Photos')),
       apk && h('a', { class: 'btn text', role: 'menuitem', href: apk.url, download: 'amintiri.apk' },
         icon('download'), `${tr('Aplicația Android', 'Android app')} ${apk.version_name}`),
       h('div', { class: 'langs', role: 'group', 'aria-label': tr('Limba', 'Language') },

@@ -24,6 +24,9 @@ memories and sharing for your family, while your pictures stay plain files in yo
   morning notification.
 - **Places** from the photos' GPS, worked out offline on the NAS; **search** for "summer 2024",
   "August", a city or an album name.
+- **On the TV:** cast a photo, a video or a memory story to a Chromecast or Google TV from the phone,
+  which becomes the remote (swipe and the TV follows), plus a slideshow. At home the TV loads the photo
+  straight from the NAS.
 - Favourites, rotate (your original file is never rewritten), **archive** (hide photos from the
   timeline and memories; they stay in albums and search), 30-day trash.
 
