@@ -148,7 +148,7 @@ nav.tabs a[aria-current="page"] { background: var(--primary-soft); color: var(--
 .avatar:hover { box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 20%, transparent); }
 .menu {
   position: absolute; right: 16px; top: 58px; background: var(--surface); border-radius: 16px;
-  box-shadow: var(--shadow); padding: 8px; min-width: 220px; z-index: 20;
+  box-shadow: var(--shadow); padding: 8px; min-width: 220px; z-index: 35;  /* peste bara din stânga (30), deschisă la hover */
   transform-origin: top right; animation: pop-in var(--mid) var(--ease-out);
 }
 .menu .who { padding: 8px 12px; color: var(--muted); font-size: 13px; }
@@ -168,6 +168,13 @@ h2.title { font-size: 30px; font-weight: 750; margin: 24px 4px 14px; display: fl
 /* scroll-padding: oprirea la început lasă loc inelului din jurul primei povești (altfel era tăiat) */
 .memories { display: flex; gap: 14px; overflow-x: auto; padding: 12px 4px 12px; scroll-snap-type: x mandatory; scroll-padding-inline: 8px; scrollbar-width: none; }
 .memories::-webkit-scrollbar { display: none; }
+.mem-wrap { position: relative; }
+/* săgețile apar doar cu mouse (pe ecranele tactile rândul se trage cu degetul) și doar când mai e ceva de văzut */
+.mem-nav { position: absolute; top: 50%; translate: 0 -50%; z-index: 2; background: var(--surface); box-shadow: var(--shadow); }
+.mem-nav.prev { left: -6px; }
+.mem-nav.next { right: -6px; }
+.mem-nav[hidden] { display: none; }
+@media (hover: none) { .mem-nav { display: none; } }
 /* ca poveștile: inel în culoarea aplicației, intră pe rând */
 .memory {
   position: relative; flex: none; width: 156px; aspect-ratio: 3 / 4; border-radius: var(--radius); overflow: hidden;
@@ -584,3 +591,25 @@ p.subtitle { margin: -8px 4px 16px; color: var(--muted); }
 dialog label.check { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; cursor: pointer; }
 dialog label.check:hover { background: var(--surface-2); }
 dialog label.check input { width: 18px; height: 18px; accent-color: var(--primary); }
+
+/* importul din Google Photos: pașii tutorialului și cutia cu arhivele găsite */
+.import-lead { max-width: 720px; color: var(--muted); margin: 0 4px 18px; line-height: 1.55; }
+.import-steps { max-width: 720px; margin: 0 4px 24px; padding-left: 22px; display: grid; gap: 14px; }
+.import-steps li::marker { font-weight: 750; color: var(--primary); }
+.import-steps strong { display: block; margin-bottom: 2px; }
+.import-steps p { margin: 0; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
+.import-steps a { color: var(--primary); font-weight: 600; }
+.import-box { max-width: 720px; margin: 0 4px 40px; padding: 18px 20px; border-radius: 16px; background: var(--surface);
+  display: grid; gap: 12px; justify-items: start; }
+.import-box h3 { margin: 0; font-size: 16px; }
+.import-box .meter { width: 100%; margin: 0; }
+.import-box .meter i { background: var(--primary); }
+.import-found { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; width: 100%; }
+.import-found li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.import-found span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.import-found small { color: var(--muted); font-variant-numeric: tabular-nums; }
+.import-progress { margin: 0; font-variant-numeric: tabular-nums; }
+.import-report ul { margin: 6px 0 0; padding-left: 20px; color: var(--muted); }
+.import-report p { margin: 8px 0 0; }
+.import-report .warn, .import-report.warn { color: var(--danger, #b3261e); }
+.import-report .ok { color: var(--primary); font-weight: 600; }

@@ -4,6 +4,9 @@ from starlette.requests import Request
 
 EN = {
     "Cerere invalidă.": "Invalid request.",
+    "N-am găsit nicio arhivă Google în folderul „Import Google”.": "No Google archive found in the “Import Google” folder.",
+    "Importul rulează deja.": "The import is already running.",
+    "Alt import rulează acum pe NAS. Încearcă după ce se termină.": "Another import is running on the NAS. Try again when it finishes.",
     "Miniatura nu se poate face.": "Can't make a thumbnail.",
     "Nu există nicio versiune publicată.": "No version has been published.",
     "Autentificare necesară.": "Sign-in required.",

@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS archive(
   user TEXT, sha256 TEXT, added_at TEXT, PRIMARY KEY(user, sha256));
 CREATE TABLE IF NOT EXISTS album_members(
   album_id INT, user TEXT, added_at TEXT, PRIMARY KEY(album_id, user));
+CREATE TABLE IF NOT EXISTS imported(
+  user TEXT, sha256 TEXT, PRIMARY KEY(user, sha256));
 CREATE TABLE IF NOT EXISTS trash(
   id INTEGER PRIMARY KEY, user TEXT, asset_id INT, trash_relpath TEXT,
   orig_relpath TEXT, deleted_at TEXT);
@@ -73,6 +75,24 @@ def _migrate(conn) -> None:
         """)
     conn.execute("CREATE INDEX IF NOT EXISTS assets_place ON assets(user, place_id)")
     conn.commit()
+
+
+def upsert_asset(conn, user: str, rel: str, sha: str, taken: str, info, source: str):
+    """Rândul unui fișier tocmai pus în Photos (upload sau import). Dacă indexerul l-a prins între timp,
+    rândul lui e suprascris: data de aici (EXIF, telefon, Google) e mai bună decât a lui."""
+    from .users import photos_root
+
+    st = (photos_root(user) / rel).stat()
+    conn.execute(
+        "INSERT INTO assets(user, relpath, sha256, size, mtime, taken_at, kind, width, height,"
+        " duration_ms, source) VALUES(?,?,?,?,?,?,?,?,?,?,?)"
+        " ON CONFLICT(user, relpath) DO UPDATE SET sha256=excluded.sha256, size=excluded.size,"
+        " mtime=excluded.mtime, taken_at=excluded.taken_at, kind=excluded.kind,"
+        " width=excluded.width, height=excluded.height, duration_ms=excluded.duration_ms,"
+        " source=excluded.source, deleted_at=NULL",
+        (user, rel, sha, st.st_size, st.st_mtime, taken, info.kind, info.width,
+         info.height, info.duration_ms, source))
+    return conn.execute("SELECT * FROM assets WHERE user=? AND relpath=?", (user, rel)).fetchone()
 
 
 def asset_json(row) -> dict:

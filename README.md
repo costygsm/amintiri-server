@@ -39,6 +39,9 @@ memories and sharing for your family, while your pictures stay plain files in yo
 - **Light:** one small process (Python + SQLite, ~70 MB RAM), installed from **Package Center** or as a
   container; runs on ARM j-series models too.
 - Android app with fingerprint lock, and a web app in any browser.
+- **Bring your Google Photos library:** import a Google Takeout export with dates, places, albums and
+  favourites, without duplicating what your phone already backed up. See
+  [Import from Google Photos](#import-from-google-photos).
 
 ## Screenshots
 
@@ -152,6 +155,28 @@ How it stays safe:
   **Do not forward port 8090 on your router.**
 
 To turn it off in the container, set `POZE_HOST: 127.0.0.1`; everything then goes through the domain.
+
+## Import from Google Photos
+
+Google doesn't let apps read your whole library, so the import goes through Google Takeout. The web page
+(account menu → Import from Google Photos) walks you through it:
+
+1. At [takeout.google.com](https://takeout.google.com), select only Google Photos and export once as .zip
+   (50 GB parts mean fewer files).
+2. When Google emails the links, download every part.
+3. Copy the archives, still zipped, to the `Import Google` folder in your home folder on the NAS
+   (Amintiri creates it the first time you open the import page). An unpacked `Takeout` folder works too.
+4. Press **Import**. It runs in the background and shows its progress.
+
+Amintiri reads the date and the location from the `.json` files next to each photo, even when they are in
+another part of the archive or their names are cut short. Photos that are in an album and in
+"Photos from 2019" are kept once, as are photos already backed up from your phone. That includes the
+smaller copies Google keeps with "Storage saver": a copy taken in the same second, with the same shape, the
+same camera and the same picture as a phone original already on the NAS is skipped, and the original
+stays. Albums, favourites and archived photos come across, and photos from Google's bin are skipped. Photos you delete later are not
+brought back by another run. The archives are only read. The report tells you when it is safe to delete
+them: not while some file is left out (a type Amintiri doesn't know yet, a half-downloaded part, a full
+disk). An interrupted import carries on where it stopped.
 
 ## How it works
 

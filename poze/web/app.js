@@ -312,6 +312,7 @@ const ROUTES = [
   { re: /^#\/locuri$/, tab: 'locuri', render: renderPlaces },
   { re: /^#\/loc\/(\d+)$/, tab: 'locuri', render: renderPlace },
   { re: /^#\/cauta(?:\/(.+))?$/, tab: null, render: renderSearch },
+  { re: /^#\/import$/, tab: null, render: renderImport },
 ];
 let main;
 let navLinks;
@@ -356,6 +357,7 @@ function startApp() {
     if (menu) { menu.remove(); menu = null; return; }
     menu = h('div', { class: `menu${fromSide ? ' from-side' : ''}`, role: 'menu' },
       h('div', { class: 'who' }, `${tr('Conectat ca', 'Signed in as')} ${state.user}`),
+      h('a', { class: 'btn text', role: 'menuitem', href: '#/import' }, icon('cloud'), tr('Import din Google Photos', 'Import from Google Photos')),
       apk && h('a', { class: 'btn text', role: 'menuitem', href: apk.url, download: 'amintiri.apk' },
         icon('download'), `${tr('Aplicația Android', 'Android app')} ${apk.version_name}`),
       h('div', { class: 'langs', role: 'group', 'aria-label': tr('Limba', 'Language') },
@@ -711,7 +713,18 @@ function duration(ms) {
 async function renderTimeline(token) {
   document.title = 'Amintiri';
   const mem = h('div', { class: 'memories', 'aria-label': tr('În ziua asta, în alți ani', 'On this day, in other years') });
-  main.append(mem);
+  // pe calculator, rotița mouse-ului derulează doar în jos: săgețile mută rândul cu amintiri cât o lățime
+  const memStep = (dir) => mem.scrollBy({ left: dir * mem.clientWidth * 0.8, behavior: calm() ? 'auto' : 'smooth' });
+  const memPrev = iconBtn('prev', tr('Amintirile anterioare', 'Previous memories'), () => memStep(-1), 'icon-btn mem-nav prev');
+  const memNext = iconBtn('next', tr('Mai multe amintiri', 'More memories'), () => memStep(1), 'icon-btn mem-nav next');
+  const memArrows = () => {
+    memPrev.hidden = mem.scrollLeft <= 4;
+    memNext.hidden = mem.scrollLeft + mem.clientWidth >= mem.scrollWidth - 4;
+  };
+  mem.addEventListener('scroll', memArrows, { passive: true });
+  new ResizeObserver(memArrows).observe(mem);
+  const memWrap = h('div', { class: 'mem-wrap' }, mem, memPrev, memNext);
+  main.append(memWrap);
   const now = new Date();
   const iso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   api(`/api/memories?date=${iso}`).then((r) => {
@@ -725,7 +738,8 @@ async function renderTimeline(token) {
         onclick: () => openViewer(y.items, 0),
       }, h('img', { src: thumb(y.items[0].id, 1024), alt: '' }), h('span', {}, label)));
     }
-    if (mem.childElementCount) mem.before(h('h2', { class: 'title' }, tr('În ziua asta', 'On this day')));
+    if (mem.childElementCount) memWrap.before(h('h2', { class: 'title' }, tr('În ziua asta', 'On this day')));
+    memArrows();
   }).catch(() => {});
   const group = getGroup();
   const kind = getPref('tip', KINDS, '');
@@ -1037,6 +1051,103 @@ async function renderPlace(token, id) {
   const feed = h('div');
   main.append(feed);
   photoFeed(feed, `/api/places/${p.id}/assets`, token);
+}
+
+// ---------- importul din Google Photos (Takeout) ----------
+function fmtWhen(s) {  // „28 octombrie 2026, 14:30”
+  const [d, t] = String(s || '').split(' ');
+  const [y, m, day] = d.split('-').map(Number);
+  return y ? `${dayMonth(day, m, y)}, ${(t || '').slice(0, 5)}` : '';
+}
+function importReport(l) {
+  if (l.failed || l.interrupted) {
+    return h('div', { class: 'import-report warn' }, l.interrupted
+      ? tr('Ultimul import s-a întrerupt (probabil NAS-ul a repornit). Apasă din nou „Importă”: ce s-a importat deja nu se dublează.',
+        'The last import was interrupted (the NAS probably restarted). Press "Import" again: what was already imported is not duplicated.')
+      : tr('Ultimul import s-a oprit cu o eroare. Încearcă din nou; ce s-a importat deja nu se dublează.',
+        'The last import stopped with an error. Try again; what was already imported is not duplicated.'));
+  }
+  const n = (v, ...w) => v > 0 && h('li', {}, plural(v, ...w));
+  // arhivele se pot șterge doar dacă n-a rămas nimic pe dinafară
+  const keep = l.skipped > 0 || l.errors > 0 || l.bad_archives.length > 0 || l.disk_full;
+  return h('div', { class: 'import-report' },
+    h('strong', {}, `${tr('Ultimul import', 'Last import')} (${fmtWhen(l.finished_at)})`),
+    h('ul', {},
+      h('li', {}, plural(l.added, 'poză sau film nou', 'poze sau filme noi', 'new photo or video', 'new photos or videos')),
+      n(l.duplicates, 'poză era deja în Amintiri', 'poze erau deja în Amintiri', 'photo was already in Amintiri', 'photos were already in Amintiri'),
+      n(l.originals, 'poză micșorată de Google, sărită: originalul de pe telefon e deja pe NAS', 'poze micșorate de Google, sărite: originalul de pe telefon e deja pe NAS', 'photo shrunk by Google, skipped: the phone original is already on the NAS', 'photos shrunk by Google, skipped: the phone originals are already on the NAS'),
+      n(l.albums, 'album', 'albume', 'album', 'albums'),
+      n(l.no_date, 'fără dată, pusă la anul folderului sau la ziua de azi', 'fără dată, puse la anul folderului sau la ziua de azi', 'without a date, filed under the folder year or today', 'without a date, filed under the folder year or today'),
+      n(l.trashed, 'din coșul Google, sărită', 'din coșul Google, sărite', "from Google's bin, skipped", "from Google's bin, skipped"),
+      n(l.errors, 'fișier stricat, sărit', 'fișiere stricate, sărite', 'broken file, skipped', 'broken files, skipped')),
+    l.skipped > 0 && h('p', { class: 'warn' }, `${plural(l.skipped, 'fișier de un tip pe care Amintiri nu-l știe încă', 'fișiere de un tip pe care Amintiri nu-l știe încă', 'file of a type Amintiri does not know yet', 'files of a type Amintiri does not know yet')} (${l.skipped_examples.join(', ')}${l.skipped > l.skipped_examples.length ? '…' : ''}).`),
+    l.bad_archives.length > 0 && h('p', { class: 'warn' }, `${tr('Arhive care nu se pot citi (descărcate pe jumătate?)', "Archives that can't be read (half downloaded?)")}: ${l.bad_archives.join(', ')}. ${tr('Descarcă-le din nou și pornește importul iar.', 'Download them again and run the import again.')}`),
+    l.disk_full && h('p', { class: 'warn' }, tr('S-a umplut discul NAS-ului, iar importul s-a oprit. Fă loc și pornește-l din nou: continuă de unde a rămas.',
+      "The NAS disk filled up and the import stopped. Free some space and run it again: it carries on where it left off.")),
+    h('p', { class: keep ? 'warn' : 'ok' }, keep
+      ? tr('Nu șterge încă arhivele: au rămas fișiere neimportate.', "Don't delete the archives yet: some files weren't imported.")
+      : tr('Totul e în Amintiri. Poți șterge arhivele din folderul „Import Google”.', 'Everything is in Amintiri. You can delete the archives from the "Import Google" folder.')));
+}
+async function renderImport(token) {
+  document.title = `${tr('Import din Google Photos', 'Import from Google Photos')} · Amintiri`;
+  const step = (title, ...text) => h('li', {}, h('strong', {}, title), h('p', {}, ...text));
+  const takeout = h('a', { href: 'https://takeout.google.com/', target: '_blank', rel: 'noopener noreferrer' }, 'takeout.google.com');
+  const box = h('section', { class: 'import-box', 'aria-live': 'polite' });
+  main.append(
+    h('h2', { class: 'title' }, tr('Import din Google Photos', 'Import from Google Photos')),
+    h('p', { class: 'import-lead' }, tr(
+      'Google nu lasă nicio aplicație să-ți ia pozele direct. Le ceri o dată ca arhivă, le pui pe NAS, iar Amintiri le așază în Photos cu data, locul, albumele și favoritele lor.',
+      "Google doesn't let any app take your photos directly. You ask for them once as an archive, put it on the NAS, and Amintiri files them in Photos with their dates, places, albums and favourites.")),
+    h('ol', { class: 'import-steps' },
+      step(tr('Cere arhiva de la Google', 'Ask Google for the archive'),
+        tr('Deschide ', 'Open '), takeout, tr(', debifează tot și bifează doar Google Foto.',
+          ', untick everything and tick only Google Photos.')),
+      step(tr('Alege cum vine', 'Choose how it arrives'),
+        tr('La pasul următor alege: link de descărcare pe email, export o singură dată, tip .zip și cea mai mare dimensiune (50 GB, ca să fie mai puține bucăți). Apoi creează exportul.',
+          'On the next step choose: download link by email, export once, type .zip and the largest size (50 GB, so there are fewer parts). Then create the export.')),
+      step(tr('Așteaptă emailul', 'Wait for the email'),
+        tr('Google pregătește arhiva în câteva ore sau zile și îți trimite linkurile. Descarcă toate bucățile.',
+          'Google prepares the archive in a few hours or days and emails you the links. Download every part.')),
+      step(tr('Pune arhivele pe NAS', 'Put the archives on the NAS'),
+        tr('Copiază-le așa cum sunt, fără să le dezarhivezi, în folderul „Import Google” din folderul tău personal: în File Station e home → Import Google, iar din rețea \\\\NAS\\home\\Import Google.',
+          'Copy them as they are, without unpacking, into the "Import Google" folder in your home folder: in File Station it is home → Import Google, over the network \\\\NAS\\home\\Import Google.')),
+      step(tr('Importă', 'Import'),
+        tr('Revino aici și apasă „Importă”. Pozele care sunt deja în Amintiri nu se dublează. La final îți spunem dacă poți șterge arhivele.',
+          'Come back here and press "Import". Photos already in Amintiri are not duplicated. At the end we tell you whether you can delete the archives.'))),
+    box);
+
+  let timer = null;
+  const refresh = async () => {
+    if (token !== renderToken) { clearInterval(timer); return; }
+    const r = await api('/api/import/google');
+    const running = r.job != null;
+    const list = r.found.length
+      ? h('ul', { class: 'import-found' }, r.found.map((f) => h('li', {}, icon('archive'), h('span', {}, f.name), f.size != null && h('small', {}, gb(f.size)))))
+      : h('p', { class: 'muted' }, tr('Încă nu e nicio arhivă în folderul „Import Google”.', 'No archive in the "Import Google" folder yet.'));
+    const kids = [h('h3', {}, tr('Arhivele găsite', 'Archives found')), list];
+    if (running) {
+      const { done, total } = r.job;
+      const bar = h('div', { class: 'meter' }, h('i'));
+      bar.firstChild.style.width = total ? `${Math.max(1, (done / total) * 100)}%` : '1%';
+      kids.push(h('p', { class: 'import-progress' }, total == null
+        ? tr('Citesc arhivele…', 'Reading the archives…')
+        : `${tr('Import în curs', 'Importing')}: ${done} ${tr('din', 'of')} ${total}`), bar);
+    } else {
+      kids.push(h('button', {
+        class: 'btn', type: 'button', disabled: !r.found.length,
+        async onclick() {
+          try { await api('/api/import/google', { method: 'POST' }); } catch (e) { toast(e.message); }
+          refresh();
+        },
+      }, icon('download'), tr('Importă', 'Import')));
+    }
+    const l = r.last;
+    if (l && !running) kids.push(importReport(l));
+    box.replaceChildren(...kids);
+    if (running && !timer) timer = setInterval(() => refresh().catch(() => {}), 2000);
+    if (!running && timer) { clearInterval(timer); timer = null; }
+  };
+  await refresh();
 }
 
 // ---------- dialoguri ----------

@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from . import metadata, naming, users
 from .auth import ApiError, current_user, get_db
 from .config import get_settings
-from .db import asset_json
+from .db import asset_json, upsert_asset
 from .metadata import FMT, TZ
 from .users import photos_root
 
@@ -204,17 +204,7 @@ def _place(conn, user: str, row, part: Path):
         taken = metadata.taken_at_from_name(row["filename"]) or metadata.resolve_taken_at(info, part, None)
     source = naming.clean_source(row["source"])
     rel = naming.place_file(user, part, taken, source, _ext(row["filename"]))
-    st = (photos_root(user) / rel).stat()
-    conn.execute(
-        "INSERT INTO assets(user, relpath, sha256, size, mtime, taken_at, kind, width, height,"
-        " duration_ms, source) VALUES(?,?,?,?,?,?,?,?,?,?,?)"
-        " ON CONFLICT(user, relpath) DO UPDATE SET sha256=excluded.sha256, size=excluded.size,"
-        " mtime=excluded.mtime, taken_at=excluded.taken_at, kind=excluded.kind,"
-        " width=excluded.width, height=excluded.height, duration_ms=excluded.duration_ms,"
-        " source=excluded.source, deleted_at=NULL",
-        (user, rel, row["sha256"], st.st_size, st.st_mtime, taken, info.kind, info.width,
-         info.height, info.duration_ms, source))
-    return conn.execute("SELECT * FROM assets WHERE user=? AND relpath=?", (user, rel)).fetchone()
+    return upsert_asset(conn, user, rel, row["sha256"], taken, info, source)
 
 
 def cleanup_stale(conn, now: float | None = None) -> int:
