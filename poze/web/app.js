@@ -137,6 +137,30 @@ async function morph(update, before, after) {
   await vt.updateCallbackDone.catch(() => {});
 }
 
+/** O versiune nouă de server, doar pentru administratorii NAS-ului; „Mai târziu” o ascunde 3 zile. */
+function showUpdate(u) {
+  try {
+    const [v, at] = (localStorage.getItem('update_ascuns') || '').split('|');
+    if (v === u.version && Date.now() - Number(at) < 3 * 86400e3) return;
+  } catch { /* fără stocare: o arătăm */ }
+  const how = u.how === 'spk'
+    ? tr('Descarcă pachetul, apoi Package Center → Instalare manuală. Setările și albumele rămân.',
+      'Download the package, then Package Center → Manual Install. Settings and albums are kept.')
+    : tr('În Container Manager: Proiect → amintiri → Acțiune → Construiește.',
+      'In Container Manager: Project → amintiri → Action → Build.');
+  const card = h('aside', { class: 'update', role: 'status' },
+    h('strong', {}, tr(`Amintiri ${u.version} e disponibilă`, `Amintiri ${u.version} is available`)),
+    h('p', {}, how),
+    h('div', { class: 'update-actions' },
+      h('button', { class: 'btn text', type: 'button', onclick() {
+        try { localStorage.setItem('update_ascuns', `${u.version}|${Date.now()}`); } catch { /* fără stocare */ }
+        leave(card);
+      } }, tr('Mai târziu', 'Later')),
+      h('a', { class: 'btn', href: u.url, target: '_blank', rel: 'noopener noreferrer' },
+        u.how === 'spk' ? tr('Descarcă', 'Download') : tr('Ce e nou', "What's new"))));
+  document.body.append(card);
+}
+
 let toastTimer;
 function toast(text) {
   document.querySelector('.toast')?.remove();
@@ -326,6 +350,7 @@ function startApp() {
   }).catch(() => {});
   let apk = null;  // ultimul APK publicat, pentru telefoanele care încă n-au aplicația
   api('/api/app/latest').then((r) => { apk = r; }).catch(() => {});
+  api('/api/update').then((u) => { if (u.available) showUpdate(u); }).catch(() => {});
   function toggleMenu(e, fromSide) {
     e.stopPropagation();
     if (menu) { menu.remove(); menu = null; return; }

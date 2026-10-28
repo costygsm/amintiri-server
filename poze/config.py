@@ -10,6 +10,7 @@ class Settings:
     dsm_url: str
     port: int
     passwd_file: Path
+    group_file: Path
 
 
 def get_settings() -> Settings:
@@ -20,4 +21,5 @@ def get_settings() -> Settings:
         dsm_url=os.environ.get("POZE_DSM_URL", "http://127.0.0.1:5000"),
         port=int(os.environ.get("POZE_PORT", "8090")),
         passwd_file=Path(os.environ.get("POZE_PASSWD_FILE", "/etc/passwd")),
+        group_file=Path(os.environ.get("POZE_GROUP_FILE", "/etc/group")),
     )

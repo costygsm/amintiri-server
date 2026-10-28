@@ -20,6 +20,19 @@ def uid_of(user: str) -> int:
     return st.st_uid
 
 
+def is_admin(user: str) -> bool:
+    """În grupul administrators din DSM: doar ei pot instala o versiune nouă."""
+    try:
+        lines = get_settings().group_file.read_text().splitlines()
+    except OSError:
+        return False
+    for line in lines:
+        parts = line.split(":")
+        if len(parts) > 3 and parts[0] == "administrators":
+            return user in parts[3].split(",")
+    return False
+
+
 def canonical(user: str) -> str:
     """Numele contului cum îl știe NAS-ul. DSM nu ține cont de majuscule („Dana” = „dana”), dar
     folderul personal și tokenurile au numele exact; fără potrivire, numele rămâne cum a venit."""

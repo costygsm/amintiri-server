@@ -13,7 +13,8 @@ case "$1" in
     set -a; . "$VAR/amintiri.env"; set +a
     # homes poate fi pe alt volum: /var/services/homes arată unde
     POZE_HOMES_ROOT=$(readlink -f /var/services/homes)
-    export POZE_HOMES_ROOT POZE_DATA_DIR="$VAR/data" POZE_PASSWD_FILE=/etc/passwd PYTHONUNBUFFERED=1
+    # POZE_INSTALL: anunțul de versiune nouă trimite la pachetul .spk, nu la Container Manager
+    export POZE_HOMES_ROOT POZE_DATA_DIR="$VAR/data" POZE_PASSWD_FILE=/etc/passwd POZE_INSTALL=spk PYTHONUNBUFFERED=1
     [ -f "$LOG" ] && [ "$(wc -c < "$LOG")" -gt 5000000 ] && mv -f "$LOG" "$LOG.1"
     cd "$PKG/target" || exit 1
     # un singur worker: blocările uploadurilor sunt în memorie

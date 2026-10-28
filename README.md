@@ -96,7 +96,9 @@ No Container Manager needed, so it also works on the j-series and other ARM mode
 5. Install the **Android app** from the [Releases](../../releases) page (`amintiri-*.apk`), enter your address and
    sign in with your DSM account.
 
-Updating: download the new `.spk` and run Manual Install again; your settings and albums are kept.
+Updating: when a new version is out, NAS administrators see it in the web app (with a **Download** button
+for the right package) and under Settings → About in the Android app. Run Manual Install with the new `.spk`;
+your settings and albums are kept.
 
 The package runs under its own account, not as root. Photos it saves belong to that account, and each person
 reaches them through their home folder's permissions, as with any file in it. If a home folder's permissions
@@ -173,7 +175,8 @@ change goes to a test instance before it reaches mine. The server has an automat
 ## Data and privacy
 
 Everything stays on your NAS. The app talks only to your server and, to check for app updates,
-to GitHub. There is no analytics and no account with us.
+to GitHub; the server asks GitHub for the latest release at most every 6 hours, only when a NAS
+administrator is signed in. There is no analytics and no account with us.
 
 ## Licence
 

@@ -17,6 +17,7 @@ services:
     volumes:
       - /volume1/homes:/volume1/homes
       - /etc/passwd:/etc/passwd:ro         # to map DSM user names to file owners
+      - /etc/group:/etc/group:ro           # administrators see when a new version is out
       - ./data:/data                       # create this folder first; database, thumbnails, daily backups
     restart: unless-stopped
     mem_limit: 2g
