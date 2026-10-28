@@ -312,7 +312,7 @@ const ROUTES = [
   { re: /^#\/locuri$/, tab: 'locuri', render: renderPlaces },
   { re: /^#\/loc\/(\d+)$/, tab: 'locuri', render: renderPlace },
   { re: /^#\/cauta(?:\/(.+))?$/, tab: null, render: renderSearch },
-  { re: /^#\/import$/, tab: null, render: renderImport },
+  { re: /^#\/import$/, tab: 'import', render: renderImport },
 ];
 let main;
 let navLinks;
@@ -385,6 +385,8 @@ function startApp() {
     avatar, picker,
   );
   // bara din stânga, pe calculator: secțiunile, încărcarea, filtrul, spațiul și contul jos
+  // importul din Google stă la vedere, sub „Încarcă” (doar în bară: antetul de pe telefon n-are loc; acolo e în meniul contului)
+  navLinks.import = [h('a', { href: '#/import', class: 'side-link' }, icon('cloud'), h('span', {}, tr('Import din Google Photos', 'Import Google Photos')))];
   kindButtons = Object.entries(KINDS).map(([k, name]) => h('button', {
     type: 'button', role: 'radio', class: 'side-link', 'data-kind': k,
     onclick() {
@@ -405,6 +407,7 @@ function startApp() {
   const side = h('aside', { class: 'side', 'aria-label': tr('Meniu', 'Menu') },
     h('nav', { 'aria-label': tr('Secțiuni', 'Sections') }, Object.values(navLinks).map((l) => l[1])),
     h('button', { class: 'btn side-upload', type: 'button', onclick: () => picker.click() }, icon('upload'), h('span', {}, tr('Încarcă', 'Upload'))),
+    navLinks.import[0],
     h('div', { class: 'side-group', role: 'radiogroup', 'aria-label': tr('Arată', 'Show') },
       h('div', { class: 'side-label' }, tr('Arată', 'Show')), kindButtons),
     h('div', { class: 'side-fill' }),
