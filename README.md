@@ -111,6 +111,11 @@ reaches them through their home folder's permissions, as with any file in it. If
 were changed by hand and don't pass down to `Photos` any more, give the `amintiri` user Read/Write on that
 `Photos` folder in File Station.
 
+**Coming from 0.6.0–0.6.3?** Those versions removed the inherited permissions from photos they saved, so
+you could see them but not rename or edit them over the network. Once, for each person: in File Station
+right-click their `Photos` folder → **Properties → Permission**, tick **Apply to this folder, sub-folders
+and files**, and press **Save**. Photos saved from 0.6.4 on keep the permissions by themselves.
+
 ## Install with Container Manager
 
 1. In File Station create a folder, e.g. `/docker/amintiri`, and **inside it a folder named `data`**
