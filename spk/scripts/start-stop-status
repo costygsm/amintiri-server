@@ -1,0 +1,36 @@
+#!/bin/sh
+# DSM pornește, oprește și întreabă de stare prin scriptul ăsta; rulează sub contul pachetului, nu ca root.
+PKG=/var/packages/amintiri
+VAR=$PKG/var
+PID=$VAR/amintiri.pid
+LOG=$VAR/amintiri.log
+running() { [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; }
+
+case "$1" in
+  start)
+    running && exit 0
+    umask 077
+    set -a; . "$VAR/amintiri.env"; set +a
+    # homes poate fi pe alt volum: /var/services/homes arată unde
+    POZE_HOMES_ROOT=$(readlink -f /var/services/homes)
+    export POZE_HOMES_ROOT POZE_DATA_DIR="$VAR/data" POZE_PASSWD_FILE=/etc/passwd PYTHONUNBUFFERED=1
+    [ -f "$LOG" ] && [ "$(wc -c < "$LOG")" -gt 5000000 ] && mv -f "$LOG" "$LOG.1"
+    cd "$PKG/target" || exit 1
+    # un singur worker: blocările uploadurilor sunt în memorie
+    nohup python/bin/python3 -m uvicorn poze.app:app --host "$POZE_HOST" --port "$POZE_PORT" --workers 1 \
+      --no-access-log --proxy-headers --forwarded-allow-ips 127.0.0.1 >> "$LOG" 2>&1 &
+    echo $! > "$PID"
+    ;;
+  stop)
+    running || exit 0
+    kill "$(cat "$PID")"
+    i=0
+    while running && [ $i -lt 15 ]; do sleep 1; i=$((i + 1)); done
+    running && kill -9 "$(cat "$PID")"
+    rm -f "$PID"
+    ;;
+  status) running || exit 3 ;;
+  log) echo "$LOG" ;;
+  *) exit 1 ;;
+esac
+exit 0

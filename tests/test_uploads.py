@@ -53,6 +53,20 @@ def asset_count(env, user="ana"):
         conn.close()
 
 
+def test_upload_without_root_keeps_package_owner(client, env, tmp_path, monkeypatch):
+    """Ca pachet DSM serverul nu e root: fișierul rămâne al pachetului (ACL-ul din homes îl dă omului)."""
+    import os
+
+    monkeypatch.setattr(os, "geteuid", lambda: 1050)
+    h = headers(env)
+    data = photo_bytes(tmp_path, 1024)
+    uid = start(client, h, data).json()["upload_id"]
+    send_all(client, h, uid, data)
+    r = client.post(f"/api/uploads/{uid}/finish", headers=h)
+    assert r.status_code == 200, r.text
+    assert (photos_root("ana") / "2025/04-aprilie/2025-04-05_20-12-26_Camera.jpg").exists()
+
+
 def test_full_upload_places_file(client, env, no_chown, tmp_path):
     h = headers(env)
     data = photo_bytes(tmp_path, 20 * 1024 * 1024)

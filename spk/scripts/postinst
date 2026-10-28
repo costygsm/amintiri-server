@@ -1,0 +1,43 @@
+#!/bin/sh
+# Setările alese în asistent; la actualizare var/ rămâne, deci păstrăm ce era și schimbăm doar adresa web.
+VAR=/var/packages/amintiri/var
+ENV=$VAR/amintiri.env
+mkdir -p "$VAR/data"
+chmod 700 "$VAR/data"   # baza de date are tokenurile de logare
+[ -f "$ENV" ] || cat > "$ENV" <<EOT
+POZE_PORT=${wizard_port:-8090}
+TZ=${wizard_tz:-Europe/Bucharest}
+# 0.0.0.0: telefonul urcă direct pe adresa din rețeaua de acasă (pe ea răspundem doar aparatelor din rețea)
+POZE_HOST=0.0.0.0
+POZE_DSM_URL=http://127.0.0.1:5000
+EOT
+# „poze.exemplu.ro” sau „https://poze.exemplu.ro/” → https://poze.exemplu.ro (fără spații și ghilimele: ajunge în JSON)
+URL=$(printf '%s' "${wizard_url:-}" | tr -d ' "\\' | sed -e 's#^https\{0,1\}://##' -e 's#/*$##')
+if [ -n "$URL" ]; then
+  sed -i '/^POZE_WEB_URL=/d' "$ENV"
+  echo "POZE_WEB_URL=https://$URL" >> "$ENV"
+fi
+chmod 600 "$ENV"
+# iconița din meniul principal DSM: adresa HTTPS dacă e dată; altfel ca la Emby, http://<NAS>:<port> (merge acasă)
+URL=$(sed -n 's/^POZE_WEB_URL=//p' "$ENV")
+PORT=$(sed -n 's/^POZE_PORT=//p' "$ENV")
+if [ -n "$URL" ]; then
+  WHERE="\"url\": \"$URL\""
+else
+  WHERE="\"protocol\": \"http\", \"port\": \"$PORT\", \"url\": \"/\""
+fi
+cat > /var/packages/amintiri/target/ui/config <<EOT
+{
+    ".url": {
+        "ro.mydisk.amintiri": {
+            "title": "Amintiri",
+            "desc": "Photos and memories",
+            "icon": "images/amintiri_{0}.png",
+            "type": "url",
+            $WHERE,
+            "allUsers": true
+        }
+    }
+}
+EOT
+exit 0

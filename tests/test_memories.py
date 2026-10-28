@@ -27,7 +27,16 @@ def test_groups_by_year(env):
     res = on_this_day(conn, "ana", date(2026, 10, 26))
     assert years(res) == [1, 3]
     assert [y["year"] for y in res] == [2025, 2023]
-    assert [i["taken_at"] for i in res[0]["items"]] == ["2025-10-26 10:00:00", "2025-10-27 10:00:00"]
+    # are poză fix în ziua asta: zilele din jur nu mai intră (altfel o vacanță întreagă ajunge „amintire”)
+    assert [i["taken_at"] for i in res[0]["items"]] == ["2025-10-26 10:00:00"]
+
+
+def test_days_around_only_without_exact_day(env):
+    conn = db.connect(env["data"])
+    add(conn, "2025-10-25 10:00:00")
+    add(conn, "2025-10-28 10:00:00")
+    items = on_this_day(conn, "ana", date(2026, 10, 26))[0]["items"]
+    assert [i["taken_at"] for i in items] == ["2025-10-25 10:00:00", "2025-10-28 10:00:00"]
 
 
 def test_window_three_days(env):
@@ -72,12 +81,12 @@ def test_burst_collapsed(env):
     assert [i["taken_at"] for i in items] == ["2025-10-26 10:00:00", "2025-10-26 10:00:30"]
 
 
-def test_cap_24(env):
+def test_cap_per_year(env):
     conn = db.connect(env["data"])
     for i in range(100):
         add(conn, f"2025-10-26 {8 + i // 60:02}:{i % 60:02}:00")
     items = on_this_day(conn, "ana", date(2026, 10, 26))[0]["items"]
-    assert len(items) == 24
+    assert len(items) == 12
     assert items[0]["taken_at"] == "2025-10-26 08:00:00"
     assert items[-1]["taken_at"] == "2025-10-26 09:39:00"
 

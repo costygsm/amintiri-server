@@ -36,7 +36,8 @@ memories and sharing for your family, while your pictures stay plain files in yo
 - Sign in with your **DSM accounts** (2-step verification supported). No second user database.
 - Photos are saved to `homes/<user>/Photos/<year>/<month>/`, named by the date they were taken.
   Stop using Amintiri tomorrow and nothing is locked in.
-- **Light:** one small container (Python + SQLite); runs fine on ARM models.
+- **Light:** one small process (Python + SQLite, ~70 MB RAM), installed from **Package Center** or as a
+  container; runs on ARM j-series models too.
 - Android app with fingerprint lock, and a web app in any browser.
 
 ## Screenshots
@@ -65,12 +66,44 @@ memories and sharing for your family, while your pictures stay plain files in yo
 
 ## Requirements
 
-- Synology DSM 7 with **Container Manager**
+- Synology **DSM 7.2** or newer
 - **User Home service** on (Control Panel → User & Group → Advanced → Enable user home service)
 - Each person needs **DSM: Allow** (Control Panel → User & Group → the user → Applications)
-- A domain name with HTTPS (DSM reverse proxy + certificate; Cloudflare works)
+- For use away from home: a domain name with HTTPS (DSM reverse proxy + certificate; Cloudflare works)
 
-## Install
+## Install from Package Center (recommended)
+
+No Container Manager needed, so it also works on the j-series and other ARM models.
+
+1. Download the package for your NAS from the latest server release on the [Releases](../../releases) page:
+   - `amintiri-<version>-x86_64.spk`: Intel/AMD models (most “+” models: DS224+, DS423+, DS923+, …)
+   - `amintiri-<version>-armv8.spk`: 64-bit ARM (DS223j, DS220j, DS120j, DS223, DS218, …) — **beta**, not yet
+     tested on real hardware; please report how it goes.
+
+   Not sure which? Control Panel → Info Center → General → *CPU*, then Synology's
+   [CPU list](https://kb.synology.com/en-global/DSM/tutorial/What_kind_of_CPU_does_my_NAS_have).
+2. Package Center → Settings → General → Trust Level: **Any publisher** (the package isn't signed by Synology).
+3. Package Center → **Manual Install** → choose the file. The wizard asks for:
+   - **Port** (default 8090);
+   - **Web address** (optional, see step 4);
+   - **Time zone** for photos whose camera didn't record one.
+
+   DSM then asks to give Amintiri Read/Write on the `homes` shared folder: that's where everyone's photos are.
+4. **At home** that's it: the Amintiri icon in the DSM main menu opens `http://<your NAS>:8090`.
+   **Away from home** (and for phone backup outside your Wi-Fi), add Control Panel → Login Portal → Advanced →
+   **Reverse Proxy → Create**: HTTPS `photos.example.com` 443 → HTTP `localhost` 8090, and enter
+   `photos.example.com` as the web address when you install or update.
+5. Install the **Android app** from the [Releases](../../releases) page (`amintiri-*.apk`), enter your address and
+   sign in with your DSM account.
+
+Updating: download the new `.spk` and run Manual Install again; your settings and albums are kept.
+
+The package runs under its own account, not as root. Photos it saves belong to that account, and each person
+reaches them through their home folder's permissions, as with any file in it. If a home folder's permissions
+were changed by hand and don't pass down to `Photos` any more, give the `amintiri` user Read/Write on that
+`Photos` folder in File Station.
+
+## Install with Container Manager
 
 1. In File Station create a folder, e.g. `/docker/amintiri`, and **inside it a folder named `data`**
    (Container Manager does not create missing folders: without `data` the container won't start —
@@ -98,7 +131,8 @@ Away from home the phone uploads through your domain (`https://photos.example.co
 path goes out to the internet and back — through Cloudflare, if you use it — which caps uploads at
 roughly the speed of your internet upload, often 1 MB/s.
 
-With `POZE_HOST: 0.0.0.0` (the default in [`docker-compose.yml`](docker-compose.yml)) the app notices it
+With the Package Center install, or `POZE_HOST: 0.0.0.0` (the default in [`docker-compose.yml`](docker-compose.yml)),
+the app notices it
 is on the same Wi-Fi as the NAS and sends photos **directly to the NAS's local address**
 (`http://192.168.x.x:8090`). On our network that took a phone from about 1 MB/s to 8 MB/s; the first
 backup of a full phone goes from days to hours. Nothing to set up in the app: it decides on its own,
@@ -110,17 +144,19 @@ How it stays safe:
   must answer a one-time challenge with a key only it and your account know. A different device that
   happens to have the same address on another Wi-Fi gets nothing.
 - **The local port answers only devices on your network** (private addresses: 192.168.x.x, 10.x.x.x,
-  172.16–31.x.x) and only the app's API; the web pages stay on the HTTPS domain.
+  172.16–31.x.x). There the web app works too, over plain http like DSM's own port 5000; away from home
+  it's only on the HTTPS domain.
 - The DSM firewall must allow your home network on port **8090** (e.g. *Allow — 192.168.0.0/24 — all ports*).
   **Do not forward port 8090 on your router.**
 
-To turn it off, set `POZE_HOST: 127.0.0.1`; everything then goes through the domain, as before.
+To turn it off in the container, set `POZE_HOST: 127.0.0.1`; everything then goes through the domain.
 
 ## How it works
 
 - Sign-in is checked against DSM (`SYNO.API.Auth` on `127.0.0.1:5000`); the server never stores passwords.
 - The server indexes each user's `Photos` folder (photos and videos already there show up too),
-  makes thumbnails and keeps albums, favourites and the trash in `data/poze.db`.
+  makes thumbnails and keeps albums, favourites and the trash in `data/poze.db` (for the package:
+  `/var/packages/amintiri/var/data/`, readable only by the package).
 - A copy of the database is written every day to `data/backup/` (last 7 kept).
 - Uploads are resumable (8 MB chunks) and de-duplicated by SHA-256.
 - Rotation is stored in the database and applied to thumbnails; downloads give you the original file.

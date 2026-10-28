@@ -1,0 +1,21 @@
+[
+  {
+    "step_title": "Amintiri",
+    "items": [
+      {
+        "type": "textfield",
+        "desc": "Optional. Leave it empty and the Amintiri icon in the DSM main menu opens http://<your NAS>:<port>, which works at home. For use away from home, and for phone backup outside your Wi-Fi, create an HTTPS address in Control Panel → Login Portal → Advanced → Reverse Proxy (your domain, port 443 → http://localhost and the Amintiri port) and enter it here.",
+        "subitems": [
+          {
+            "key": "wizard_url",
+            "desc": "Web address (optional)",
+            "emptyText": "https://photos.example.com",
+            "validator": {
+              "allowBlank": true
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

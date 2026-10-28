@@ -22,10 +22,11 @@ def env(tmp_path, monkeypatch):
 
 @pytest.fixture
 def no_chown(monkeypatch):
-    """Înlocuiește os.chown (testele rulează fără root) și înregistrează apelurile."""
+    """Ca root (în container): înlocuiește os.chown (testele rulează fără root) și înregistrează apelurile."""
     import os
 
     calls = []
+    monkeypatch.setattr(os, "geteuid", lambda: 0)
     monkeypatch.setattr(os, "chown", lambda path, uid, gid: calls.append((str(path), uid, gid)))
     return calls
 

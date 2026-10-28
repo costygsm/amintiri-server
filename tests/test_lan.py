@@ -39,7 +39,8 @@ def test_no_lan_url_when_only_local(monkeypatch):
     (("127.0.0.1", 8090), "8.8.8.8", "/api/health", True),   # prin proxy-ul DSM
     (("192.168.0.127", 8090), "192.168.0.50", "/api/health", True),  # telefonul de acasă
     (("192.168.0.127", 8090), "8.8.8.8", "/api/health", False),  # de pe internet, direct
-    (("192.168.0.127", 8090), "192.168.0.50", "/", False),  # pagina web doar prin adresa publică
+    (("192.168.0.127", 8090), "192.168.0.50", "/", True),  # pagina web acasă, ca la Emby: http://NAS:port
+    (("192.168.0.127", 8090), "8.8.8.8", "/", False),
 ])
 def test_only_lan_peers_on_direct_address(env, server, peer, path, ok):
     app = create_app(start_indexer=False)

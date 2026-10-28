@@ -556,6 +556,7 @@ function photoFeed(container, url, token, { emptyText = tr('Nicio poză încă.'
     } finally {
       busy = false;
     }
+    if (prev) { topIo.unobserve(topSentinel); topIo.observe(topSentinel); }
   }
   const topIo = new IntersectionObserver((e) => { if (e[0].isIntersecting) newer(); }, { rootMargin: '800px' });
 
@@ -582,8 +583,9 @@ function photoFeed(container, url, token, { emptyText = tr('Nicio poză încă.'
     } finally {
       busy = false;
     }
-    // ecran mare, pagină scurtă: cere încă una fără să aștepte derularea
-    if (next && sentinel.getBoundingClientRect().top < innerHeight + 600) more();
+    // pagină scurtă (la Ani pozele sunt mici): observatorul nu mai anunță dacă marcajul de jos a rămas
+    // în zona lui, așa că îl punem să privească din nou; dacă e tot aproape, cere încă o pagină
+    if (next) { io.unobserve(sentinel); io.observe(sentinel); }
   }
   const io = new IntersectionObserver((e) => { if (e[0].isIntersecting) more(); }, { rootMargin: '1200px' });
   io.observe(sentinel);

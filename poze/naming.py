@@ -35,6 +35,13 @@ def target_relpath(taken_at: str, source: str, ext: str, n: int = 1) -> str:
     return f"{year}/{month}-{MONTHS[int(month) - 1]}/{name}"
 
 
+def _chown(path: Path, uid: int) -> None:
+    """În container suntem root și dăm fișierul omului. Ca pachet DSM rulăm sub contul pachetului:
+    fișierul rămâne al lui, iar omul îl are prin ACL-ul moștenit din folderul lui personal."""
+    if os.geteuid() == 0:
+        os.chown(path, uid, GID)
+
+
 def _make_dirs(user: str, rel_dir: str, uid: int) -> None:
     target = users.safe_path(user, rel_dir)
     new = []
@@ -44,7 +51,7 @@ def _make_dirs(user: str, rel_dir: str, uid: int) -> None:
         d = d.parent
     os.makedirs(target, exist_ok=True)
     for d in reversed(new):
-        os.chown(d, uid, GID)
+        _chown(d, uid)
 
 
 def place_file(user: str, part: Path, taken_at: str, source: str, ext: str) -> str:
@@ -58,7 +65,7 @@ def place_file(user: str, part: Path, taken_at: str, source: str, ext: str) -> s
         except FileExistsError:
             continue
         try:
-            os.chown(final, uid, GID)
+            _chown(final, uid)
             os.chmod(final, 0o644)
         except BaseException:
             try:

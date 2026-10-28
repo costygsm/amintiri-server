@@ -4,10 +4,11 @@ from datetime import date, datetime, timedelta
 from .db import asset_json
 from .metadata import FMT
 
-MAX_PER_YEAR = 24
+MAX_PER_YEAR = 12
 BURST_SECONDS = 3
 MIN_SIDE = 200
-# ca Google Photos: și pozele de cu câteva zile înainte/după, altfel anii fără poză fix în ziua asta lipsesc
+# ca Google Photos: anii fără poză fix în ziua asta vin cu pozele de cu câteva zile înainte/după;
+# anii cu poze în ziua asta rămân doar cu ele (altfel o vacanță întreagă ajunge în amintire)
 WINDOW_DAYS = 3
 
 
@@ -63,5 +64,9 @@ def on_this_day(conn, user: str, day: date) -> list[dict]:
         if last is not None and (t - last).total_seconds() < BURST_SECONDS:
             continue  # rafală: rămâne prima
         by_year.setdefault(year, []).append(row)
-    return [{"years_ago": day.year - y, "year": y, "items": [asset_json(r) for r in _spread(by_year[y])]}
-            for y in sorted(by_year, reverse=True)]
+    out = []
+    for y in sorted(by_year, reverse=True):
+        exact = str(_anniversary(day, y))
+        rows = [r for r in by_year[y] if r["taken_at"].startswith(exact)] or by_year[y]
+        out.append({"years_ago": day.year - y, "year": y, "items": [asset_json(r) for r in _spread(rows)]})
+    return out

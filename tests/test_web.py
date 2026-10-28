@@ -29,6 +29,22 @@ def test_web_login_sets_strict_httponly_cookie_and_no_token_in_body(web, dsm):
         assert flag.lower() in cookie.lower()
 
 
+def test_web_login_at_home_over_http_cookie_not_secure(env, dsm):
+    """Direct pe adresa din rețea e http: un cookie Secure nu s-ar mai întoarce, deci nu te-ai putea loga."""
+    from poze.app import create_app
+
+    app = create_app(start_indexer=False)
+
+    async def at_home(scope, receive, send):
+        scope["server"] = ("192.168.0.127", 8090)
+        await app(scope, receive, send)
+
+    r = web_login(TestClient(at_home, client=("192.168.0.50", 1234)))
+    assert r.status_code == 200
+    cookie = r.headers["set-cookie"].lower()
+    assert "httponly" in cookie and "samesite=strict" in cookie and "secure" not in cookie
+
+
 def test_web_login_needs_otp_like_the_app(web, dsm):
     dsm["response"] = {"success": False, "error": {"code": 403}}
     r = web_login(web)

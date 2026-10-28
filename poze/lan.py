@@ -69,10 +69,11 @@ def direct(scope) -> bool:
 
 async def only_from_lan(request: Request, call_next):
     """Pe adresa locală răspundem doar aparatelor din rețea: DSM lasă tot din RO pe orice port,
-    deci dacă routerul ar redirecționa vreodată portul, de pe internet nu se ajunge la server."""
+    deci dacă routerul ar redirecționa vreodată portul, de pe internet nu se ajunge la server.
+    Acasă merge și pagina web (http://NAS:port, ca la Emby), pe lângă urcarea directă din aplicație."""
     if direct(request.scope):
         client = request.client.host if request.client else ""
-        if not private(client) or not request.url.path.startswith("/api/"):
+        if not private(client):
             return JSONResponse({"error": "Nu există."}, status_code=404)
     return await call_next(request)
 

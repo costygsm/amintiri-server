@@ -1,6 +1,6 @@
 [project]
 name = "amintiri-server"
-version = "0.5.1"
+version = "0.5.2"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi==0.162.0", "starlette==1.10.0", "pydantic==2.14.1", "uvicorn==0.54.0",

@@ -86,6 +86,7 @@ def test_attempt_limit(env, no_chown, tmp_path, monkeypatch):
 
 
 def test_chown_failure_keeps_part(env, tmp_path, monkeypatch):
+    monkeypatch.setattr(os, "geteuid", lambda: 0)
     p = _part(tmp_path, "a.part", b"x")
 
     def boom(path, uid, gid):
@@ -100,6 +101,7 @@ def test_chown_failure_keeps_part(env, tmp_path, monkeypatch):
 
 
 def test_dir_chown_failure_keeps_part(env, tmp_path, monkeypatch):
+    monkeypatch.setattr(os, "geteuid", lambda: 0)
     p = _part(tmp_path, "a.part", b"x")
 
     def boom(path, uid, gid):

@@ -138,16 +138,17 @@ def create_app(start_indexer: bool = True) -> FastAPI:
         check_login(body, request)
         token = auth.issue_token(conn, body.user, auth.browser_label(request.headers.get("user-agent", "")), web=True)
         r = JSONResponse({"user": body.user})
+        # prin proxy-ul DSM e HTTPS; direct acasă e http, unde un cookie Secure nu s-ar mai întoarce
         r.set_cookie(auth.COOKIE, token, max_age=auth.WEB_DAYS * 86400, path="/",
-                     httponly=True, secure=True, samesite="strict")
+                     httponly=True, secure=not lan.direct(request.scope), samesite="strict")
         return r
 
     @app.post("/api/logout", status_code=204)
-    def logout(token: str = Depends(auth.bearer_token), _user: str = Depends(auth.current_user),
+    def logout(request: Request, token: str = Depends(auth.bearer_token), _user: str = Depends(auth.current_user),
                conn: sqlite3.Connection = Depends(auth.get_db)):
         auth.revoke_token(conn, token)
         r = Response(status_code=204)
-        r.delete_cookie(auth.COOKIE, path="/", httponly=True, secure=True, samesite="strict")
+        r.delete_cookie(auth.COOKIE, path="/", httponly=True, secure=not lan.direct(request.scope), samesite="strict")
         return r
 
     @app.get("/api/me")
