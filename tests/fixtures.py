@@ -1,10 +1,6 @@
-import shutil
-import subprocess
 from pathlib import Path
 
 from PIL import Image
-
-HAS_FFMPEG = shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is not None
 
 
 def _dms(x: float):
@@ -42,13 +38,25 @@ def make_heic(path: Path, size=(80, 60)) -> Path:
     return path
 
 
-def make_mp4(path: Path, creation_time: str = "2025-07-01T09:00:00Z", location: str | None = None) -> Path | None:
-    if not HAS_FFMPEG:
-        return None
-    loc = ["-metadata", f"location={location}"] if location else []
-    subprocess.run(
-        ["ffmpeg", "-v", "quiet", "-y", "-f", "lavfi", "-i", "color=c=blue:s=64x48:d=1",
-         "-metadata", f"creation_time={creation_time}", *loc, "-pix_fmt", "yuv420p", str(path)],
-        check=True,
-    )
+def make_mp4(path: Path, creation_time: str = "2025-07-01T09:00:00Z", location: str | None = None,
+             rotation: int = 0, seconds: float = 1.5) -> Path:
+    """Clip MPEG-4 de 64×48: jumătatea stângă roșie, dreapta albastră (pentru sensul rotirii)."""
+    import av
+    with av.open(str(path), "w") as c:
+        s = c.add_stream("mpeg4", rate=10)
+        s.width, s.height, s.pix_fmt = 64, 48, "yuv420p"
+        if rotation:
+            s.set_display_rotation(rotation)
+        c.metadata["creation_time"] = creation_time
+        if location:
+            c.metadata["location"] = location
+        img = Image.new("RGB", (64, 48), (0, 0, 255))
+        img.paste((255, 0, 0), (0, 0, 32, 48))
+        for i in range(int(seconds * 10)):
+            f = av.VideoFrame.from_image(img)
+            f.pts = i
+            for pk in s.encode(f):
+                c.mux(pk)
+        for pk in s.encode():
+            c.mux(pk)
     return path

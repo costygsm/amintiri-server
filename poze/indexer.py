@@ -1,4 +1,5 @@
 """Indexarea pozelor din Photos. Fișierele sunt doar citite, niciodată modificate."""
+import dataclasses
 import logging
 import os
 import re
@@ -203,6 +204,34 @@ def fix_dims(conn) -> int:
     return len(changed)
 
 
+def fix_videos(conn, batch: int = 100) -> int:
+    """Clipurile indexate de pachetul .spk înainte de 0.6.5 (fără decodor în DSM) au rămas fără dimensiuni,
+    durată, loc și, dacă numele n-avea data, cu data copierii. Le recitim prin PyAV; locul îl reia
+    geo.backfill. Rulează la fiecare pornire (citirea e ieftină): un fișier de pe un volum încă nemontat
+    se reia data viitoare."""
+    rows = conn.execute("SELECT id, user, relpath, taken_at FROM assets WHERE kind='video' AND width IS NULL"
+                        " AND deleted_at IS NULL").fetchall()
+    fixed = 0
+    for i in range(0, len(rows), batch):
+        out = []
+        for r in rows[i:i + batch]:
+            try:
+                path = safe_path(r["user"], r["relpath"])
+                info = metadata.read_media_info(path)
+                # data o schimbăm doar dacă venise din rezervă (nume/mtime), nu de la telefon la încărcare
+                fallback = metadata.resolve_taken_at(dataclasses.replace(info, taken_at=None), path, None)
+                taken = metadata.resolve_taken_at(info, path, None) if r["taken_at"] == fallback else r["taken_at"]
+            except Exception:
+                continue
+            if info.width:
+                out.append((info.width, info.height, info.duration_ms, taken, r["id"]))
+        conn.executemany("UPDATE assets SET width=?, height=?, duration_ms=?, taken_at=?, geo_done=0 WHERE id=?",
+                         out)
+        conn.commit()
+        fixed += len(out)
+    return fixed
+
+
 def start_background(settings) -> threading.Thread:
     def loop():
         try:
@@ -215,6 +244,11 @@ def start_background(settings) -> threading.Thread:
                 log.info("dimensiuni corectate pentru %d poze", n)
         except Exception:
             log.exception("corectarea dimensiunilor a eșuat")
+        try:
+            if n := fix_videos(conn):
+                log.info("clipuri recitite: %d", n)
+        except Exception:
+            log.exception("recitirea clipurilor a eșuat")
         try:
             if n := geo.relocate(conn):
                 log.info("locuri refăcute pentru %d poze", n)

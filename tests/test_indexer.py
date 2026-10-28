@@ -224,3 +224,36 @@ def test_fix_dims_once(env):
     assert tuple(conn.execute("SELECT width, height FROM assets").fetchone()) == (200, 400)
     conn.execute("UPDATE assets SET width=400, height=200")
     assert indexer.fix_dims(conn) == 0  # deja făcut
+
+
+def test_fix_videos(env):
+    # clipurile indexate de pachet cu ffmpeg-ul din DSM (fără decodoare) rămâneau fără dimensiuni și loc,
+    # iar fără dată în nume primeau data copierii
+    from tests.fixtures import make_mp4
+    (env["homes"] / "ana/Photos").mkdir(parents=True, exist_ok=True)
+    make_mp4(env["homes"] / "ana/Photos/VID_20250701_120000.mp4", rotation=-90)
+    make_mp4(env["homes"] / "ana/Photos/excursie.mp4", creation_time="2024-05-01T09:00:00Z")
+    conn = db.connect(env["data"])
+    indexer.scan_user(conn, "ana")
+    mtime_date = metadata.resolve_taken_at(metadata.MediaInfo("video", None, None, None, None),
+                                           env["homes"] / "ana/Photos/excursie.mp4", None)
+    conn.execute("UPDATE assets SET width=NULL, height=NULL, duration_ms=NULL, geo_done=1")
+    conn.execute("UPDATE assets SET taken_at=? WHERE relpath='excursie.mp4'", (mtime_date,))
+    assert indexer.fix_videos(conn) == 2
+    rows = {r["relpath"]: tuple(r)[1:] for r in conn.execute(
+        "SELECT relpath, width, height, duration_ms, geo_done, taken_at FROM assets")}
+    assert rows["VID_20250701_120000.mp4"] == (48, 64, 1500, 0, "2025-07-01 12:00:00")
+    assert rows["excursie.mp4"][4] == "2024-05-01 12:00:00"
+    assert indexer.fix_videos(conn) == 0  # nimic gol rămas
+
+
+def test_fix_videos_keeps_upload_date(env):
+    # data venită de la telefon la încărcare nu e rezerva: rămâne
+    from tests.fixtures import make_mp4
+    (env["homes"] / "ana/Photos").mkdir(parents=True, exist_ok=True)
+    make_mp4(env["homes"] / "ana/Photos/excursie.mp4", creation_time="2024-05-01T09:00:00Z")
+    conn = db.connect(env["data"])
+    indexer.scan_user(conn, "ana")
+    conn.execute("UPDATE assets SET width=NULL, taken_at='2023-01-01 10:00:00'")
+    assert indexer.fix_videos(conn) == 1
+    assert conn.execute("SELECT taken_at FROM assets").fetchone()[0] == "2023-01-01 10:00:00"

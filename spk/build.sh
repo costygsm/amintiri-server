@@ -40,6 +40,24 @@ uv pip install --quiet --target "$LIB/site-packages" --python-platform "$PY-many
   --python-version 3.12 --only-binary :all: -r "$W/req.txt"
 tar -C "$SRV" -cf - --exclude=__pycache__ poze | tar -C "$W/target" -xf -
 
+# licențele componentelor incluse: textele stau lângă fiecare roată (*.dist-info/licenses), aici e cuprinsul
+{
+  echo "Amintiri bundles third-party software. Licence texts are in python/lib/python3.12/site-packages/*.dist-info/"
+  echo "(licenses/ and, for PyAV, sboms/ listing the bundled FFmpeg libraries) and in python/ (Python itself)."
+  echo
+  echo "- Python (python-build-standalone): PSF License and the licences of its bundled libraries"
+  echo "- PyAV: BSD-3-Clause. Its wheel bundles the FFmpeg libraries (LGPL-3.0-or-later; sources: https://ffmpeg.org)"
+  echo "  together with codec libraries including x264 and x265 (GPL-2.0-or-later), dav1d, libvpx, SVT-AV1 and others;"
+  echo "  build scripts and sources: https://github.com/PyAV-Org/pyav-ffmpeg"
+  echo "- Pillow (MIT-CMU), pillow-heif with libheif/libde265 (LGPL-3.0), FastAPI, Starlette, Pydantic, Uvicorn, httpx"
+  echo
+  for d in "$LIB/site-packages/"*.dist-info; do
+    n=$(sed -n 's/^Name: //p' "$d/METADATA"); v=$(sed -n 's/^Version: //p' "$d/METADATA")
+    l=$(sed -n 's/^License-Expression: //p; s/^License: //p' "$d/METADATA" | head -1)
+    echo "$n $v${l:+ — $l}"
+  done
+} > "$W/target/THIRD_PARTY_LICENSES.txt"
+
 # iconițele meniului DSM; ui/config îl scrie postinst, cu adresa web din asistent
 mkdir -p "$W/target/ui"
 cp -R "$HERE/ui/images" "$W/target/ui/"

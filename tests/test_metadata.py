@@ -5,11 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from fixtures import HAS_FFMPEG, make_heic, make_jpeg, make_mp4
+from fixtures import make_heic, make_jpeg, make_mp4
 from poze.metadata import (kind_of, read_media_info, resolve_taken_at,
                            sha256_file, taken_at_from_name, MediaInfo)
 
-needs_ffmpeg = pytest.mark.skipif(not HAS_FFMPEG, reason="ffmpeg lipsește")
 
 
 def test_exif_date(tmp_path):
@@ -55,7 +54,6 @@ def test_kind_of():
     assert kind_of(Path("a.txt")) is None
 
 
-@needs_ffmpeg
 def test_video_creation_time_utc_to_local(tmp_path):
     info = read_media_info(make_mp4(tmp_path / "v.mp4"))
     assert info.kind == "video"
@@ -94,25 +92,19 @@ def test_pixel_name_with_millis():
     assert taken_at_from_name("PXL_20240101_101010123.jpg") == "2024-01-01 10:10:10"
 
 
-def _fake_ffprobe(monkeypatch, payload):
-    import json
-    import subprocess
-    monkeypatch.setattr(
-        subprocess, "run",
-        lambda *a, **k: subprocess.CompletedProcess(a, 0, stdout=json.dumps(payload).encode()),
-    )
+def _fake_probe(monkeypatch, **kw):
+    from poze import video
+    monkeypatch.setattr(video, "probe", lambda path: video.Probe(**kw))
 
 
 def test_video_placeholder_creation_time_ignored(tmp_path, monkeypatch):
-    _fake_ffprobe(monkeypatch, {"format": {"duration": "1.5", "tags": {"creation_time": "1970-01-01T00:00:00.000000Z"}},
-                                "streams": [{"codec_type": "video", "width": 64, "height": 48}]})
+    _fake_probe(monkeypatch, duration=1.5, width=64, height=48, tags={"creation_time": "1970-01-01T00:00:00.000000Z"})
     assert read_media_info(tmp_path / "v.mp4").taken_at is None
 
 
 def test_video_creation_time_from_stream_tags(tmp_path, monkeypatch):
-    _fake_ffprobe(monkeypatch, {"format": {"duration": "1.5"},
-                                "streams": [{"codec_type": "video", "width": 64, "height": 48,
-                                             "tags": {"creation_time": "2025-07-01T09:00:00.000000Z"}}]})
+    _fake_probe(monkeypatch, duration=1.5, width=64, height=48,
+                stream_tags=[{"creation_time": "2025-07-01T09:00:00.000000Z"}])
     info = read_media_info(tmp_path / "v.mp4")
     assert (info.taken_at, info.width, info.height, info.duration_ms) == ("2025-07-01 12:00:00", 64, 48, 1500)
 
@@ -141,12 +133,28 @@ def test_rotated_photo_dims_as_shown(tmp_path):
     assert (info.width, info.height) == (200, 400)
 
 
-@pytest.mark.parametrize("stream", [
-    {"tags": {"rotate": "90"}},
-    {"side_data_list": [{"side_data_type": "Display Matrix", "rotation": -90}]},
-])
-def test_rotated_video_dims_as_shown(tmp_path, monkeypatch, stream):
-    _fake_ffprobe(monkeypatch, {"format": {"duration": "1"},
-                                "streams": [{"codec_type": "video", "width": 1920, "height": 1080, **stream}]})
+@pytest.mark.parametrize("rotation", [90, -90, 270])
+def test_rotated_video_dims_as_shown(tmp_path, monkeypatch, rotation):
+    _fake_probe(monkeypatch, duration=1, width=1920, height=1080, rotation=rotation)
     info = read_media_info(tmp_path / "v.mp4")
     assert (info.width, info.height) == (1080, 1920)
+
+
+def test_real_rotated_clip_without_system_ffmpeg(tmp_path):
+    # pe DSM nu există ffprobe, iar /bin/ffmpeg n-are decodoare: totul trebuie să meargă prin PyAV
+    from poze import video
+    from poze.geo import read_gps
+    p = make_mp4(tmp_path / "VID.mp4", creation_time="2025-07-01T09:00:00.000000Z",
+                 location="+44.2011+028.6530/", rotation=-90)
+    info = read_media_info(p)
+    assert (info.width, info.height, info.duration_ms) == (48, 64, 1500)
+    assert info.taken_at == "2025-07-01 12:00:00"
+    img = video.frame(p)
+    assert img.size == (48, 64)
+    # -90 = rotit în sensul acelor: jumătatea stângă (roșie) ajunge sus
+    r, g, b = img.convert("RGB").getpixel((24, 4))
+    assert r > 180 and b < 80
+    r, g, b = img.convert("RGB").getpixel((24, 60))
+    assert b > 180 and r < 80
+    assert video.frame(p, size=32).size == (24, 32)
+    assert read_gps(p) == pytest.approx((44.2011, 28.653))

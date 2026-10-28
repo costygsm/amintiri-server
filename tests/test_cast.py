@@ -78,12 +78,9 @@ def test_cast_heic_goes_as_jpeg(client, env):
 
 
 def test_cast_video_original_with_range(client, env):
-    import pytest
     from tests.fixtures import make_mp4
     (photos_root("ana") / "cam").mkdir(parents=True)
     p = make_mp4(photos_root("ana") / "cam" / "c.mp4")
-    if p is None:
-        pytest.skip("fără ffmpeg")
     scan(env)
     aid = asset_id(env)
     j = client.post(f"/api/cast/{aid}", headers=headers(env)).json()

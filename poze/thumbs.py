@@ -1,13 +1,13 @@
 """Miniaturile JPEG, ținute în cache în `data_dir/thumbs`."""
 import logging
 import os
-import subprocess
 import tempfile
 from pathlib import Path
 
+import av
 from PIL import Image, ImageOps
 
-from . import metadata  # noqa: F401  (înregistrează deschiderea HEIC)
+from . import metadata, video  # noqa: F401  (metadata înregistrează deschiderea HEIC)
 from .config import get_settings
 from .users import safe_path
 
@@ -17,13 +17,17 @@ SIZES = (256, 1024)
 QUALITY = 82
 
 
-def _video_frame(src: Path, out: Path) -> None:
-    for ss in ("1", "0"):
-        subprocess.run(["ffmpeg", "-v", "quiet", "-y", "-ss", ss, "-i", str(src), "-frames:v", "1",
-                        str(out)], capture_output=True, timeout=120)
-        if out.exists() and out.stat().st_size:
-            return
-    raise RuntimeError(f"niciun cadru din {src}")
+def _video_frame(src: Path, size: int) -> Image.Image:
+    try:
+        return video.frame(src, size)
+    except av.FFmpegError as e:
+        raise RuntimeError(f"niciun cadru din {src}: {e}") from e
+
+
+def _open(asset, src: Path, size: int) -> Image.Image:
+    if asset["kind"] == "video":
+        return _video_frame(src, size)
+    return Image.open(src)
 
 
 def cache_path(asset, size: int) -> Path:
@@ -40,12 +44,8 @@ def thumbnail(asset, size: int) -> Path:
     src = safe_path(asset["user"], asset["relpath"])
     fd, tmp = tempfile.mkstemp(suffix=".jpg", dir=cache.parent)
     os.close(fd)
-    frame = Path(tmp + ".frame.jpg")
     try:
-        if asset["kind"] == "video":
-            _video_frame(src, frame)
-            src = frame
-        with Image.open(src) as img:
+        with _open(asset, src, size) as img:
             img = ImageOps.exif_transpose(img)
             if asset["rotation"]:
                 img = img.rotate(-asset["rotation"], expand=True)  # PIL rotește invers acelor
@@ -53,11 +53,10 @@ def thumbnail(asset, size: int) -> Path:
             img.convert("RGB").save(tmp, "JPEG", quality=QUALITY)
         os.replace(tmp, cache)
     finally:
-        for p in (tmp, frame):
-            try:
-                os.unlink(p)
-            except FileNotFoundError:
-                pass
+        try:
+            os.unlink(tmp)
+        except FileNotFoundError:
+            pass
     return cache
 
 

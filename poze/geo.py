@@ -3,18 +3,16 @@
 Nimic nu pleacă de pe NAS: lista de orașe e în `date/orase.tsv.gz` (vezi tools/geonames.py).
 """
 import gzip
-import json
 import logging
 import math
 import re
-import subprocess
 import threading
 from dataclasses import dataclass
 from pathlib import Path
 
 from PIL import Image
 
-from . import metadata
+from . import metadata, video
 from .users import photos_root
 
 log = logging.getLogger(__name__)
@@ -181,9 +179,7 @@ def parse_iso6709(s: str) -> tuple[float, float] | None:
 
 def _from_video(path: Path) -> tuple[float, float] | None:
     try:
-        out = subprocess.run(["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", str(path)],
-                             capture_output=True, timeout=60, check=True).stdout
-        tags = json.loads(out).get("format", {}).get("tags", {})
+        tags = video.tags(path)
     except Exception:
         return None
     for k, v in tags.items():
@@ -241,7 +237,7 @@ def backfill(conn, user: str, batch: int = 200) -> int:
                             "LIMIT ?", (user, batch)).fetchall()
         if not rows:
             return done
-        # întâi citim (ffprobe poate dura), apoi scriem într-o tranzacție scurtă: uploadurile nu așteaptă
+        # întâi citim (citirea clipurilor poate dura), apoi scriem într-o tranzacție scurtă: uploadurile nu așteaptă
         found = []
         for r in rows:
             gps = read_gps(root / r["relpath"])

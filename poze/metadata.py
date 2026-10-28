@@ -1,9 +1,7 @@
 """Data pozei, amprenta și tipul fișierului."""
 import hashlib
-import json
 import os
 import re
-import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,6 +9,8 @@ from zoneinfo import ZoneInfo
 
 import pillow_heif
 from PIL import Image
+
+from . import video
 
 pillow_heif.register_heif_opener()
 
@@ -82,33 +82,15 @@ def _utc_to_local(dt: datetime) -> str:
 def _video_info(path: Path) -> MediaInfo:
     empty = MediaInfo("video", None, None, None, None)
     try:
-        out = subprocess.run(
-            ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", str(path)],
-            capture_output=True, check=True, timeout=60,
-        ).stdout
-        data = json.loads(out)
+        p = video.probe(path)
     except Exception:
         return empty
-    width = height = None
-    for s in data.get("streams", []):
-        if s.get("codec_type") == "video":
-            width, height = s.get("width"), s.get("height")
-            rot = s.get("tags", {}).get("rotate") or next(
-                (d.get("rotation") for d in s.get("side_data_list", []) if "rotation" in d), 0)
-            try:
-                if int(float(rot)) % 180:  # telefonul filmează culcat și notează rotirea
-                    width, height = height, width
-            except (TypeError, ValueError):
-                pass
-            break
-    duration_ms = None
-    try:
-        duration_ms = round(float(data["format"]["duration"]) * 1000)
-    except (KeyError, ValueError, TypeError):
-        pass
+    width, height = p.width, p.height
+    if p.rotation % 180:  # telefonul filmează culcat și notează rotirea
+        width, height = height, width
+    duration_ms = round(p.duration * 1000) if p.duration else None
     taken = None
-    tags = [data.get("format", {}).get("tags", {})] + [s.get("tags", {}) for s in data.get("streams", [])]
-    for t in tags:
+    for t in [p.tags] + p.stream_tags:
         raw = t.get("creation_time")
         if raw:
             try:

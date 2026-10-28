@@ -116,6 +116,11 @@ you could see them but not rename or edit them over the network. Once, for each 
 right-click their `Photos` folder → **Properties → Permission**, tick **Apply to this folder, sub-folders
 and files**, and press **Save**. Photos saved from 0.6.4 on keep the permissions by themselves.
 
+**Coming from 0.5.2–0.6.4 (package)?** Videos added while running those versions got no thumbnail, size,
+length or place: the package used DSM's own `ffmpeg`, which can't decode phone videos (H.264/HEVC).
+From 0.6.5 the package brings its own decoders and re-reads those videos once by itself after the
+update; nothing to do. The Container Manager install was never affected.
+
 ## Install with Container Manager
 
 1. In File Station create a folder, e.g. `/docker/amintiri`, and **inside it a folder named `data`**
@@ -194,6 +199,8 @@ disk). An interrupted import carries on where it stopped.
   `/var/packages/amintiri/var/data/`, readable only by the package).
 - A copy of the database is written every day to `data/backup/` (last 7 kept).
 - Uploads are resumable (8 MB chunks) and de-duplicated by SHA-256.
+- Videos are read with [PyAV](https://github.com/PyAV-Org/PyAV), which ships its own FFmpeg, so the
+  package doesn't depend on DSM's `ffmpeg` (it has no H.264/HEVC decoder).
 - Rotation is stored in the database and applied to thumbnails; downloads give you the original file.
 - Shared albums only reference photos: each photo stays in its owner's folder, and leaving an album
   takes your photos out of it.
@@ -217,4 +224,7 @@ Copyright © 2026 BACIU I CONSTANTIN II ([servicegsm.eu](https://servicegsm.eu))
 Contact: office@servicegsm.eu
 
 The server is released under the **GNU AGPL-3.0** ([LICENSE](LICENSE)).
+The package bundles third-party software under its own licences: Python, Pillow, pillow-heif (libheif,
+LGPL-3.0) and PyAV with the FFmpeg libraries (LGPL-3.0) and codecs such as x264/x265 (GPL-2.0).
+The list and where to find each licence text is in `THIRD_PARTY_LICENSES.txt` inside the package.
 The Android app is distributed as a signed APK on the Releases page; its source is not published.

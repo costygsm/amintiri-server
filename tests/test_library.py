@@ -182,7 +182,6 @@ def test_deleted_asset_hidden(client, env):
     assert client.get(f"/api/assets/{asset_id(env)}/original", headers=h).status_code == 404
 
 
-@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg lipsește (rulează în container)")
 def test_video_thumb(client, env):
     from tests.fixtures import make_mp4
 

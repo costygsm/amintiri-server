@@ -2,7 +2,7 @@ import pytest
 
 from poze import auth, db, geo, indexer
 from poze.users import photos_root
-from tests.fixtures import HAS_FFMPEG, make_jpeg, make_mp4
+from tests.fixtures import make_jpeg, make_mp4
 
 AVRIG = (45.7167, 24.3833)
 
@@ -49,7 +49,6 @@ def test_nearest_city():
     assert geo.nearest(0.0, -30.0) is None  # în mijlocul oceanului
 
 
-@pytest.mark.skipif(not HAS_FFMPEG, reason="ffmpeg lipsește (rulează în container)")
 def test_read_gps_from_video(tmp_path):
     p = make_mp4(tmp_path / "v.mp4", location="+44.2013+028.6140/")
     assert geo.read_gps(p) == pytest.approx((44.2013, 28.614), abs=1e-4)
