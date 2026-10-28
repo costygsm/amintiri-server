@@ -58,6 +58,15 @@ def test_place_never_overwrites(env, no_chown, tmp_path):
     assert oct(f1.stat().st_mode & 0o777) == "0o644"
 
 
+def test_place_keeps_mode_when_not_root(env, tmp_path, monkeypatch):
+    # ca pachet DSM: chmod ar șterge ACL-ul moștenit din folderul omului
+    monkeypatch.setattr(os, "geteuid", lambda: 1030)
+    p = _part(tmp_path, "a.part", b"x")
+    p.chmod(0o600)
+    rel = naming.place_file("ana", p, "2025-04-05 20:12:26", "Camera", "jpg")
+    assert oct(users.safe_path("ana", rel).stat().st_mode & 0o777) == "0o600"
+
+
 def test_place_sets_owner(env, no_chown, tmp_path):
     p = _part(tmp_path, "a.part", b"x")
     rel = naming.place_file("ana", p, "2025-04-05 20:12:26", "Camera", "jpg")

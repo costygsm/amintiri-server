@@ -9,7 +9,7 @@ running() { [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; }
 case "$1" in
   start)
     running && exit 0
-    umask 077
+    umask 022  # pozele noi moștenesc ACL-ul folderului omului; datele noastre stau în var/data (700)
     set -a; . "$VAR/amintiri.env"; set +a
     # homes poate fi pe alt volum: /var/services/homes arată unde
     POZE_HOMES_ROOT=$(readlink -f /var/services/homes)

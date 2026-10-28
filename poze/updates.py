@@ -49,7 +49,8 @@ def check(user: str) -> dict:
     if not out["admin"]:
         return out
     rel = _newest_release()
-    if not rel or _version(rel["tag_name"]) <= _version("v" + __version__):
+    new, now = (_version(rel["tag_name"]) if rel else None), _version("v" + __version__)
+    if not new or not now or new <= now:  # o versiune de probă („0.7.0-dev”) nu se compară
         return out
     version = rel["tag_name"][1:]
     how = "spk" if os.environ.get("POZE_INSTALL") == "spk" else "docker"

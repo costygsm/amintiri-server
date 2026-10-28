@@ -126,7 +126,7 @@ def months(kind: Literal["photo", "video"] | None = None,
     rows = conn.execute(
         "WITH u AS (SELECT taken_at, kind, ROW_NUMBER() OVER (PARTITION BY sha256 ORDER BY id) AS rn"
         " FROM assets WHERE user=? AND deleted_at IS NULL"
-        " AND sha256 NOT IN (SELECT sha256 FROM archive WHERE user=?))"
+        f" {NOT_ARCHIVED})"
         " SELECT substr(taken_at, 1, 7) AS m, count(*) AS n FROM u WHERE rn=1 AND (? IS NULL OR kind=?)"
         " GROUP BY m ORDER BY m DESC", (user, user, kind, kind)).fetchall()
     return {"months": [{"month": r["m"], "count": r["n"]} for r in rows]}

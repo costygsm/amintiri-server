@@ -42,6 +42,13 @@ def _chown(path: Path, uid: int) -> None:
         os.chown(path, uid, GID)
 
 
+def _readable(path: Path) -> None:
+    """Doar ca root (Docker): fișierul făcut cu umask strâns devine citibil. Ca pachet NU: chmod pe DSM
+    șterge ACL-ul moștenit, iar omul n-ar mai putea modifica poza din File Station sau prin rețea."""
+    if os.geteuid() == 0:
+        os.chmod(path, 0o644)
+
+
 def _make_dirs(user: str, rel_dir: str, uid: int) -> None:
     target = users.safe_path(user, rel_dir)
     new = []
@@ -66,7 +73,7 @@ def place_file(user: str, part: Path, taken_at: str, source: str, ext: str) -> s
             continue
         try:
             _chown(final, uid)
-            os.chmod(final, 0o644)
+            _readable(final)
         except BaseException:
             try:
                 os.unlink(final)

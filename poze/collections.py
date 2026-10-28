@@ -20,17 +20,20 @@ _LIVE = "SELECT DISTINCT sha256 FROM assets WHERE user=? AND deleted_at IS NULL"
 def places(req: Request, user: str = Depends(current_user), conn: sqlite3.Connection = Depends(get_db)):
     rows = conn.execute("""
         WITH u AS (
-          SELECT id, place_id, taken_at, ROW_NUMBER() OVER (PARTITION BY sha256 ORDER BY id) AS rn
+          SELECT id, sha256, place_id, taken_at, ROW_NUMBER() OVER (PARTITION BY sha256 ORDER BY id) AS rn
           FROM assets WHERE user=? AND deleted_at IS NULL AND place_id IS NOT NULL),
         c AS (
           SELECT place_id, COUNT(*) AS n,
                  (SELECT id FROM u u2 WHERE u2.place_id=u.place_id AND rn=1
-                  ORDER BY taken_at DESC, id DESC LIMIT 1) AS cover
+                  ORDER BY taken_at DESC, id DESC LIMIT 1) AS cover,
+                 (SELECT sha256 FROM u u2 WHERE u2.place_id=u.place_id AND rn=1
+                  ORDER BY taken_at DESC, id DESC LIMIT 1) AS cover_sha
           FROM u WHERE rn=1 GROUP BY place_id)
-        SELECT p.*, c.n, c.cover FROM c JOIN places p ON p.id=c.place_id
+        SELECT p.*, c.n, c.cover, c.cover_sha FROM c JOIN places p ON p.id=c.place_id
         ORDER BY c.n DESC, p.name""", (user,)).fetchall()
     return {"places": [{"id": r["id"], **i18n.place(r, req),
-                        "lat": r["lat"], "lon": r["lon"], "count": r["n"], "cover_id": r["cover"]} for r in rows]}
+                        "lat": r["lat"], "lon": r["lon"], "count": r["n"], "cover_id": r["cover"],
+                        "cover_sha": r["cover_sha"]} for r in rows]}
 
 
 @router.get("/api/places/{place_id}/assets")
@@ -75,6 +78,7 @@ def _album_json(conn, user: str, album_id: int) -> dict:
     link = conn.execute("SELECT token FROM album_links WHERE album_id=?", (album_id,)).fetchone()
     members = [r[0] for r in conn.execute("SELECT user FROM album_members WHERE album_id=? ORDER BY user", (album_id,))]
     return {"id": a["id"], "name": a["name"], "count": n, "cover_id": cover[0]["id"] if cover else None,
+            "cover_sha": cover[0]["sha256"] if cover else None,
             "link": link[0] if link else None, "owner": a["user"], "mine": a["user"] == user, "members": members}
 
 

@@ -207,7 +207,10 @@ function fullDate(s) {
   return `${dayMonth(t.d, t.m, t.y)}, ${String(t.hh).padStart(2, '0')}:${String(t.mm).padStart(2, '0')}`;
 }
 // [rot] intră în adresă: după o rotire, browserul nu mai arată miniatura veche din cache
-const thumb = (id, size = 256, rot = 0) => `/api/assets/${id}/thumb?size=${size}${rot ? `&r=${rot}` : ''}`;
+// amprenta intră în adresă: numărul unei poze șterse definitiv putea fi dat alteia, iar browserul arăta miniatura veche
+const v = (sha) => (sha ? `v=${sha.slice(0, 12)}` : '');
+const thumb = (id, size = 256, rot = 0, sha = '') => `/api/assets/${id}/thumb?size=${size}${rot ? `&r=${rot}` : ''}${sha ? `&${v(sha)}` : ''}`;
+const originalOf = (a) => `/api/assets/${a.id}/original${a.sha256 ? `?${v(a.sha256)}` : ''}`;
 
 // ---------- API ----------
 class ApiError extends Error {
@@ -538,7 +541,7 @@ function photoFeed(container, url, token, { emptyText = tr('Nicio poză încă.'
     onItems?.(items);
   }
   function makeTile(a, seq) {
-    const img = h('img', { alt: '', 'data-src': thumb(a.id, 256, a.rotation), decoding: 'async', onload() { this.classList.add('on'); lazy.unobserve(this); } });
+    const img = h('img', { alt: '', 'data-src': thumb(a.id, 256, a.rotation, a.sha256), decoding: 'async', onload() { this.classList.add('on'); lazy.unobserve(this); } });
     lazy.observe(img);
     const what = a.kind === 'video' ? tr('Clip', 'Video') : tr('Poză', 'Photo');
     const from = `${what} ${tr('din', 'from')} ${fullDate(a.taken_at)}`;
@@ -651,7 +654,7 @@ function photoFeed(container, url, token, { emptyText = tr('Nicio poză încă.'
       const list = picked();
       // pe rând: browserul poate întreba o dată dacă lasă site-ul să descarce mai multe fișiere
       list.forEach((a, n) => setTimeout(() => {
-        const link = h('a', { href: `/api/assets/${a.id}/original`, download: '' });
+        const link = h('a', { href: originalOf(a), download: '' });
         document.body.append(link); link.click(); link.remove();
       }, n * 400));
       toast(`${tr('Se descarcă', 'Downloading')} ${plural(list.length, 'fișier', 'fișiere', 'file', 'files')}`);
@@ -740,7 +743,7 @@ async function renderTimeline(token) {
       mem.append(h('button', {
         class: 'memory', type: 'button', 'aria-label': `${label}, ${plural(y.items.length, 'poză', 'poze', 'photo', 'photos')}`,
         onclick: () => openViewer(y.items, 0),
-      }, h('img', { src: thumb(y.items[0].id, 1024), alt: '' }), h('span', {}, label)));
+      }, h('img', { src: thumb(y.items[0].id, 1024, y.items[0].rotation, y.items[0].sha256), alt: '' }), h('span', {}, label)));
     }
     if (mem.childElementCount) memWrap.before(h('h2', { class: 'title' }, tr('În ziua asta', 'On this day')));
     memArrows();
@@ -915,7 +918,7 @@ async function renderAlbums(token) {
     h('a', { class: 'card new', href: '#/arhiva' },
       h('div', { class: 'cover' }, icon('archive')), h('b', {}, tr('Arhivă', 'Archive')), h('small', {}, tr('Ascunse din Poze', 'Hidden from Photos'))),
     albums.map((a) => h('a', { class: 'card', href: `#/album/${a.id}` },
-      h('div', { class: 'cover' }, a.cover_id ? h('img', { src: thumb(a.cover_id, 1024), alt: '', loading: 'lazy' }) : icon('album')),
+      h('div', { class: 'cover' }, a.cover_id ? h('img', { src: thumb(a.cover_id, 1024, 0, a.cover_sha), alt: '', loading: 'lazy' }) : icon('album')),
       h('b', {}, (!a.mine || a.members?.length) ? h('span', { class: 'shared', title: tr('Album comun', 'Shared album') }, icon('people')) : null, a.name),
       h('small', {}, albumSub(a)))),
   );
@@ -1040,7 +1043,7 @@ async function renderPlaces(token) {
     return;
   }
   main.append(h('div', { class: 'cards' }, places.map((p) => h('a', { class: 'card', href: `#/loc/${p.id}` },
-    h('div', { class: 'cover' }, h('img', { src: thumb(p.cover_id, 1024), alt: '', loading: 'lazy' })),
+    h('div', { class: 'cover' }, h('img', { src: thumb(p.cover_id, 1024, 0, p.cover_sha), alt: '', loading: 'lazy' })),
     h('b', {}, p.name), h('small', {}, `${placeSubtitle(p)} · ${plural(p.count, 'poză', 'poze', 'photo', 'photos')}`)))));
 }
 function placeSubtitle(p) { return [p.region, p.country].filter(Boolean).join(', '); }
@@ -1254,17 +1257,17 @@ function openViewer(items, start, { onChange, thumbOf } = {}) {
   }
   function show() {
     const a = items[i];
-    const original = `/api/assets/${a.id}/original`;
+    const original = originalOf(a);
     stage.replaceChildren(a.kind === 'video'
-      ? h('video', { src: original, controls: true, autoplay: true, playsinline: true, poster: thumb(a.id, 1024) })
-      : h('img', { src: thumb(a.id, 1024, a.rotation), alt: `${tr('Poză din', 'Photo from')} ${fullDate(a.taken_at)}` }));
+      ? h('video', { src: original, controls: true, autoplay: true, playsinline: true, poster: thumb(a.id, 1024, 0, a.sha256) })
+      : h('img', { src: thumb(a.id, 1024, a.rotation, a.sha256), alt: `${tr('Poză din', 'Photo from')} ${fullDate(a.taken_at)}` }));
     when.replaceChildren(h('b', {}, fullDate(a.taken_at)), h('small', {}, `${i + 1} ${tr('din', 'of')} ${items.length}`));
     dl.href = original;
     rotBtn.classList.toggle('hidden', a.kind !== 'photo');
     prevBtn.classList.toggle('hidden', i === 0);
     nextBtn.classList.toggle('hidden', i === items.length - 1);
     // următoarea se încarcă dinainte, ca trecerea să fie instantă
-    if (items[i + 1]?.kind === 'photo') new Image().src = thumb(items[i + 1].id, 1024, items[i + 1].rotation);
+    if (items[i + 1]?.kind === 'photo') new Image().src = thumb(items[i + 1].id, 1024, items[i + 1].rotation, items[i + 1].sha256);
   }
   function go(d) { const n = i + d; if (n >= 0 && n < items.length) { i = n; show(); } }
   function key(e) {

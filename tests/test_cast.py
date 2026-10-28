@@ -90,3 +90,7 @@ def test_cast_video_original_with_range(client, env):
     assert j["kind"] == "video" and j["mime"] == "video/mp4"
     r = client.get("/" + j["path"], headers={"Range": "bytes=0-9"})
     assert r.status_code == 206 and len(r.content) == 10
+
+
+def test_mov_goes_as_mp4():
+    assert cast._mime("IMG_1.MOV") == "video/mp4" and cast._mime("a.webm") == "video/webm"

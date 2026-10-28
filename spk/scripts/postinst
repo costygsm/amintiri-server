@@ -4,15 +4,18 @@ VAR=/var/packages/amintiri/var
 ENV=$VAR/amintiri.env
 mkdir -p "$VAR/data"
 chmod 700 "$VAR/data"   # baza de date are tokenurile de logare
+# fișierul e citit de shell la pornire: doar cifre la port, doar caractere de fus orar la TZ
+PORT=$(printf '%s' "${wizard_port:-}" | tr -cd '0-9'); PORT=${PORT:-8090}
+ZONE=$(printf '%s' "${wizard_tz:-}" | tr -cd 'A-Za-z0-9/_+-'); ZONE=${ZONE:-Europe/Bucharest}
 [ -f "$ENV" ] || cat > "$ENV" <<EOT
-POZE_PORT=${wizard_port:-8090}
-TZ=${wizard_tz:-Europe/Bucharest}
+POZE_PORT=$PORT
+TZ=$ZONE
 # 0.0.0.0: telefonul urcă direct pe adresa din rețeaua de acasă (pe ea răspundem doar aparatelor din rețea)
 POZE_HOST=0.0.0.0
 POZE_DSM_URL=http://127.0.0.1:5000
 EOT
-# „poze.exemplu.ro” sau „https://poze.exemplu.ro/” → https://poze.exemplu.ro (fără spații și ghilimele: ajunge în JSON)
-URL=$(printf '%s' "${wizard_url:-}" | tr -d ' "\\' | sed -e 's#^https\{0,1\}://##' -e 's#/*$##')
+# „poze.exemplu.ro” sau „https://poze.exemplu.ro/” → https://poze.exemplu.ro (doar caractere de adresă: ajunge în JSON și în shell)
+URL=$(printf '%s' "${wizard_url:-}" | tr -cd 'A-Za-z0-9.:/_-' | sed -e 's#^https\{0,1\}://##' -e 's#/*$##')
 if [ -n "$URL" ]; then
   sed -i '/^POZE_WEB_URL=/d' "$ENV"
   echo "POZE_WEB_URL=https://$URL" >> "$ENV"

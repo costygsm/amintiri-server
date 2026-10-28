@@ -1,2 +1,2 @@
-__version__ = "0.6.2"
+__version__ = "0.6.4"
 API_LEVEL = 1

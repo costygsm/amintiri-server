@@ -297,3 +297,92 @@ def test_google_storage_saver_copy_keeps_phone_original(env, no_chown):
         assert (rep2["added"], rep2["originals"], rep2["duplicates"]) == (0, 0, 3)
     finally:
         conn.close()
+
+
+def test_storage_saver_copy_in_year_folder_then_album_still_fills_album(env, no_chown):
+    # Google pune același fișier în „Photos from 2024” și încă o dată în fiecare album
+    T = "2024:08:15 18:30:05"
+    (photos_root("ana") / "telefon").mkdir()
+    orig = exif_bytes(scene(1), T, "Pixel 7")
+    (photos_root("ana") / "telefon" / "IMG_1.jpg").write_bytes(orig)
+    conn = db.connect(env["data"])
+    indexer.scan_user(conn, "ana")
+    conn.close()
+    small = exif_bytes(scene(1), T, "Pixel 7", scale=0.5, quality=60)
+    d = env["homes"] / "ana" / takeout.FOLDER
+    d.mkdir()
+    write_zip(d / "takeout-001.zip", {
+        f"{GP}/Photos from 2024/IMG_1.jpg": small,
+        f"{GP}/Mare/IMG_1.jpg": small,
+        f"{GP}/Mare/metadata.json": json.dumps({"title": "Mare"}),
+    })
+    conn, rep = run(env)
+    try:
+        assert (rep["originals"], rep["added"]) == (1, 0)
+        album = conn.execute("SELECT id FROM albums WHERE name='Mare'").fetchone()[0]
+        items = [r[0] for r in conn.execute("SELECT sha256 FROM album_items WHERE album_id=?", (album,))]
+        assert items == [hashlib.sha256(orig).hexdigest()]
+    finally:
+        conn.close()
+
+
+def test_import_does_not_fill_an_album_that_is_already_shared(env, no_chown):
+    conn = db.connect(env["data"])
+    shared = conn.execute("INSERT INTO albums(user, name) VALUES('ana', 'Mare')").lastrowid
+    conn.execute("INSERT INTO album_members(album_id, user) VALUES(?, 'bogdan')", (shared,))
+    conn.commit()
+    conn.close()
+    d = env["homes"] / "ana" / takeout.FOLDER
+    d.mkdir()
+    write_zip(d / "takeout-001.zip", {
+        f"{GP}/Mare/IMG_1.jpg": jpeg((1, 99, 1), "2019:01:01 10:00:00"),
+        f"{GP}/Mare/metadata.json": json.dumps({"title": "Mare"}),
+    })
+    conn, rep = run(env)
+    try:
+        assert rep["added"] == 1
+        assert conn.execute("SELECT COUNT(*) FROM album_items WHERE album_id=?", (shared,)).fetchone()[0] == 0
+        own = conn.execute("SELECT id FROM albums WHERE user='ana' AND name='Mare (Google)'").fetchone()[0]
+        assert conn.execute("SELECT COUNT(*) FROM album_items WHERE album_id=?", (own,)).fetchone()[0] == 1
+    finally:
+        conn.close()
+
+
+def test_photo_in_trash_is_not_brought_back_by_import(env, no_chown):
+    from poze import trash
+    data = jpeg((3, 33, 3), "2019:01:01 10:00:00")
+    (photos_root("ana") / "telefon").mkdir()
+    (photos_root("ana") / "telefon" / "IMG_1.jpg").write_bytes(data)
+    conn = db.connect(env["data"])
+    indexer.scan_user(conn, "ana")
+    trash.move_to_trash(conn, "ana", conn.execute("SELECT id FROM assets").fetchone()[0])
+    conn.close()
+    d = env["homes"] / "ana" / takeout.FOLDER
+    d.mkdir()
+    write_zip(d / "takeout-001.zip", {f"{GP}/Photos from 2019/IMG_1.jpg": data})
+    conn, rep = run(env)
+    try:
+        assert (rep["added"], rep["duplicates"]) == (0, 1)
+    finally:
+        conn.close()
+
+
+def test_link_swapped_in_is_not_followed(env, no_chown, tmp_path):
+    # un fișier pus ca legătură spre pozele altui cont nu se citește, nici direct, nici ca arhivă
+    secret = env["homes"] / "bogdan" / "Photos" / "x.jpg"
+    secret.write_bytes(jpeg((8, 8, 8)))
+    d = env["homes"] / "ana" / takeout.FOLDER
+    d.mkdir()
+    (d / "a.jpg").symlink_to(secret)
+    try:
+        takeout._open_inside(d / "a.jpg", d.resolve())
+        assert False, "legătura a fost urmată"
+    except OSError:
+        pass
+    outside = tmp_path / "afara.jpg"
+    outside.write_bytes(b"x")
+    try:
+        takeout._open_inside(outside, d.resolve())
+        assert False, "fișier din afara folderului"
+    except OSError:
+        pass

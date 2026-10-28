@@ -22,6 +22,7 @@ import secrets
 import tarfile
 import threading
 import zipfile
+import zlib
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 
@@ -88,21 +89,48 @@ def _sources(user: str) -> list[Path]:
     return archives + ([d] if next(_walk(d), None) else [])
 
 
+def _open_inside(p: Path, root: Path):
+    """Deschide fără să urmeze o legătură și verifică DUPĂ deschidere că fișierul chiar e în folderul de import:
+    între verificare și deschidere, cineva ar putea pune în locul lui (sau al unui folder) o legătură spre
+    pozele altui cont, pe care serverul le poate citi."""
+    f = os.fdopen(os.open(p, os.O_RDONLY | os.O_NOFOLLOW), "rb")
+    try:
+        real = Path(os.readlink(f"/proc/self/fd/{f.fileno()}"))
+        if not real.is_relative_to(root):
+            raise OSError(errno.EACCES, "în afara folderului de import", str(p))
+    except BaseException:
+        f.close()
+        raise
+    return f
+
+
 def _entries(src: Path, want):
     """(cale în arhivă, fișier deschis) pentru intrările pe care `want(cale)` le vrea."""
     if src.is_dir():
+        root = src.resolve()
         for name, p in _walk(src):
             if want(name):
-                with open(p, "rb") as f:
+                try:
+                    f = _open_inside(p, root)
+                except OSError as e:  # un fișier necitibil nu strică tot folderul
+                    log.warning("import Google: %s: %s", name, e)
+                    continue
+                with f:
                     yield name, f
-    elif src.name.lower().endswith(".zip"):
-        with zipfile.ZipFile(src) as z:
+        return
+    with _open_inside(src, src.parent.resolve()) as raw:
+        yield from _archive_entries(src, raw, want)
+
+
+def _archive_entries(src: Path, raw, want):
+    if src.name.lower().endswith(".zip"):
+        with zipfile.ZipFile(raw) as z:
             for info in z.infolist():
                 if not info.is_dir() and want(info.filename):
                     with z.open(info) as f:
                         yield info.filename, f
     else:
-        with tarfile.open(src, "r:*") as t:
+        with tarfile.open(fileobj=raw, mode="r:*") as t:
             for m in t:
                 if m.isfile() and want(m.name):
                     f = t.extractfile(m)
@@ -215,11 +243,20 @@ def _year_fallback(path: str) -> str | None:
 # ── Importul ───────────────────────────────────────────────────────────────────────────
 
 def _album_id(conn, user: str, name: str, cache: dict) -> int:
+    """Un album al lui cu același nume e refolosit doar dacă nu e împărțit (membri sau link public): altfel
+    pozele din Google ar ajunge la alții fără să fi ales asta. Atunci folosim „<nume> (Google)”."""
     if name not in cache:
-        row = conn.execute("SELECT id FROM albums WHERE user=? AND name=?", (user, name)).fetchone()
+        for n in (name, f"{name} (Google)"):
+            row = conn.execute(
+                "SELECT id FROM albums a WHERE user=? AND name=?"
+                " AND NOT EXISTS (SELECT 1 FROM album_members m WHERE m.album_id=a.id)"
+                " AND NOT EXISTS (SELECT 1 FROM album_links l WHERE l.album_id=a.id)", (user, n)).fetchone()
+            taken = row is None and conn.execute("SELECT 1 FROM albums WHERE user=? AND name=?", (user, n)).fetchone()
+            if row or not taken:
+                break
         cache[name] = row[0] if row else conn.execute(
             "INSERT INTO albums(user, name, created_at) VALUES(?,?,?)",
-            (user, name, datetime.now(TZ).strftime(FMT))).lastrowid
+            (user, n, datetime.now(TZ).strftime(FMT))).lastrowid
     return cache[name]
 
 
@@ -329,7 +366,7 @@ def run_import(conn, user: str, progress: dict) -> dict:
                     rep["skipped"] += 1
                     if len(rep["skipped_examples"]) < EXAMPLES:
                         rep["skipped_examples"].append(PurePosixPath(name).name)
-        except (zipfile.BadZipFile, tarfile.TarError, EOFError, OSError) as e:
+        except (zipfile.BadZipFile, tarfile.TarError, EOFError, OSError, zlib.error) as e:
             # o bucată descărcată pe jumătate: o raportăm și mergem mai departe cu celelalte
             log.warning("import Google %s: arhiva %s: %s", user, src.name, e)
             rep["bad_archives"].append(src.name)
@@ -350,13 +387,27 @@ def run_import(conn, user: str, progress: dict) -> dict:
                 for name, f in _entries(src, _is_media):
                     progress["done"] += 1
                     _one(conn, user, name, f, side, incoming, albums, now, rep)
-            except (zipfile.BadZipFile, tarfile.TarError, EOFError) as e:
+            except (zipfile.BadZipFile, tarfile.TarError, EOFError, OSError, zlib.error) as e:
+                if isinstance(e, OSError) and e.errno == errno.ENOSPC:
+                    raise DiskFull from e
                 log.warning("import Google %s: arhiva %s: %s", user, src.name, e)
                 rep["bad_archives"].append(src.name)
     except DiskFull:
         rep["disk_full"] = True
     conn.commit()
     return rep
+
+
+def _kept(conn, user: str, sha: str) -> str | None:
+    """Amprenta pozei de pe NAS pentru fișierul ăsta: el însuși, sau originalul de pe telefon ales la un import
+    de dinainte (copia Google micșorată apare în „Photos from 2024” și încă o dată în fiecare album)."""
+    live = "SELECT 1 FROM assets WHERE user=? AND sha256=? AND deleted_at IS NULL"
+    if conn.execute(live, (user, sha)).fetchone():
+        return sha
+    row = conn.execute("SELECT kept FROM imported WHERE user=? AND sha256=?", (user, sha)).fetchone()
+    if row and row[0] and conn.execute(live, (user, row[0])).fetchone():
+        return row[0]
+    return None
 
 
 def _one(conn, user, name, f, side, incoming, albums, now, rep) -> None:
@@ -367,27 +418,30 @@ def _one(conn, user, name, f, side, incoming, albums, now, rep) -> None:
     part = incoming / f"g{secrets.token_hex(8)}.part.{Path(name).suffix.lower().lstrip('.')}"
     try:
         sha = _copy(f, part)
-        live = conn.execute("SELECT 1 FROM assets WHERE user=? AND sha256=? AND deleted_at IS NULL",
-                            (user, sha)).fetchone()
-        seen = conn.execute("SELECT 1 FROM imported WHERE user=? AND sha256=?", (user, sha)).fetchone()
-        conn.execute("INSERT OR IGNORE INTO imported(user, sha256) VALUES(?,?)", (user, sha))
-        if live or seen:  # pe NAS deja, sau importată o dată și ștearsă de om: nu o aducem înapoi
+        kept = _kept(conn, user, sha)
+        known = conn.execute("SELECT 1 FROM imported WHERE user=? AND sha256=?", (user, sha)).fetchone() or \
+            conn.execute("SELECT 1 FROM assets WHERE user=? AND sha256=?", (user, sha)).fetchone()
+        if kept or known:
+            # pe NAS deja (albumul o primește și așa); sau ștearsă de om (în coș, sau după un import): nu revine
             part.unlink()
             rep["duplicates"] += 1
         else:
             info = metadata.read_media_info(part)
             taken, dated, precise = _date(info, part, name, facts)
-            original = _original_on_nas(conn, user, taken, info, part) if precise else None
-            if original:  # originalul de pe telefon e deja aici: păstrăm originalul, albumul îl primește pe el
+            kept = _original_on_nas(conn, user, taken, info, part) if precise else None
+            if kept:  # originalul de pe telefon e deja aici: păstrăm originalul, albumul îl primește pe el
                 part.unlink()
                 rep["originals"] += 1
-                sha = original
             else:
                 _place(conn, user, part, sha, taken, info, facts)
                 rep["added"] += 1
                 rep["no_date"] += not dated
-            live = True
-        if live:
+                kept = sha
+        # scris abia acum, nu înainte de citiri și copieri: o tranzacție deschisă ar ține pe loc uploadurile
+        # „kept” = poza de pe NAS pentru amprenta asta: aceeași poză din alt folder (un album) ajunge la ea
+        conn.execute("INSERT OR IGNORE INTO imported(user, sha256, kept) VALUES(?,?,?)", (user, sha, kept))
+        if kept:
+            sha = kept
             album = side.albums.get(PurePosixPath(name).parent.as_posix())
             if album:
                 conn.execute("INSERT OR IGNORE INTO album_items(album_id, sha256, added_at, user) VALUES(?,?,?,?)",
@@ -400,6 +454,7 @@ def _one(conn, user, name, f, side, incoming, albums, now, rep) -> None:
         conn.commit()
     except Exception as e:
         conn.rollback()
+        albums.clear()  # un album făcut în tranzacția anulată nu mai există: numărul lui nu mai e bun
         part.unlink(missing_ok=True)
         if isinstance(e, OSError) and e.errno == errno.ENOSPC:
             raise DiskFull from e

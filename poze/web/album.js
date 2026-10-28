@@ -36,7 +36,8 @@ function icon(name) {
 }
 const iconBtn = (name, label, onclick, cls = 'icon-btn') =>
   h('button', { class: cls, type: 'button', 'aria-label': label, title: label, onclick }, icon(name));
-const thumb = (id, size = 256) => `${base}/thumb/${id}?size=${size}`;
+// amprenta în adresă: un număr refolosit de altă poză nu mai aduce miniatura veche din cache
+const thumb = (id, size = 256, sha = '') => `${base}/thumb/${id}?size=${size}${sha ? `&v=${sha.slice(0, 12)}` : ''}`;
 function fullDate(s) {
   const [d, t] = s.split(' ');
   const [y, m, day] = d.split('-').map(Number);
@@ -85,7 +86,7 @@ async function start() {
       const page = await get(`${base}/assets?limit=200${next ? `&before=${encodeURIComponent(next)}` : ''}`);
       for (const a of page.items) {
         const idx = items.push(a) - 1;
-        const img = h('img', { alt: '', 'data-src': thumb(a.id), onload() { this.classList.add('on'); } });
+        const img = h('img', { alt: '', 'data-src': thumb(a.id, 256, a.sha256), onload() { this.classList.add('on'); } });
         lazy.observe(img);
         grid.append(h('button', {
           class: 'tile', type: 'button', 'aria-label': `${a.kind === 'video' ? tr('Clip', 'Video') : tr('Poză', 'Photo')} ${tr('din', 'from')} ${fullDate(a.taken_at)}`,
@@ -111,10 +112,10 @@ function viewer(items, start) {
     h('div', { class: 'bar' }, iconBtn('close', tr('Închide (Esc)', 'Close (Esc)'), close), when, dl), stage, prev, next);
   function show() {
     const a = items[i];
-    const original = `${base}/original/${a.id}`;
+    const original = `${base}/original/${a.id}${a.sha256 ? `?v=${a.sha256.slice(0, 12)}` : ''}`;
     stage.replaceChildren(a.kind === 'video'
-      ? h('video', { src: original, controls: true, autoplay: true, playsinline: true, poster: thumb(a.id, 1024) })
-      : h('img', { src: thumb(a.id, 1024), alt: `${tr('Poză din', 'Photo from')} ${fullDate(a.taken_at)}` }));
+      ? h('video', { src: original, controls: true, autoplay: true, playsinline: true, poster: thumb(a.id, 1024, a.sha256) })
+      : h('img', { src: thumb(a.id, 1024, a.sha256), alt: `${tr('Poză din', 'Photo from')} ${fullDate(a.taken_at)}` }));
     when.replaceChildren(h('b', {}, fullDate(a.taken_at)), h('small', {}, `${i + 1} ${tr('din', 'of')} ${items.length}`));
     dl.href = original;
     prev.classList.toggle('hidden', i === 0);
