@@ -159,6 +159,8 @@ def test_original_range(client, env):
     assert r.content == p.read_bytes()[:100]
     full = client.get(f"/api/assets/{asset_id(env)}/original", headers=headers(env))
     assert full.status_code == 200 and full.content == p.read_bytes()
+    # cu numele lui, nu „original” (pe Windows „original.jfif”, la mai multe „original (1).jfif”)
+    assert 'filename="a.jpg"' in full.headers["content-disposition"]
 
 
 def test_other_users_asset_404(client, env):

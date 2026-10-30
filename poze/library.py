@@ -156,7 +156,8 @@ def original(asset_id: int, user: str = Depends(current_user), conn: sqlite3.Con
         raise ApiError(404, NOT_FOUND)
     if not path.is_file():
         raise ApiError(404, NOT_FOUND)
-    return FileResponse(path)
+    # fără nume, browserul îl botează după adresă („original”, pe Windows „original.jfif”): ale tale, cu numele lor
+    return FileResponse(path, filename=path.name, content_disposition_type="inline")
 
 
 @router.get("/api/memories")
